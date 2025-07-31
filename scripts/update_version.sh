@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Monetai Android SDK Version Update Script
+# Usage: ./scripts/update_version.sh <version>
+
+set -e
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <version>"
+    echo "Example: $0 1.0.0"
+    exit 1
+fi
+
+VERSION=$1
+echo "🔄 Updating Monetai Android SDK version to $VERSION..."
+
+# Version format validation
+if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+    echo "❌ Invalid version format: $VERSION"
+    echo "Expected format: X.Y.Z or X.Y.Z-beta.N"
+    exit 1
+fi
+
+# Update .version file
+echo "📝 Updating .version file..."
+echo "$VERSION" > .version
+echo "✅ .version file updated to $VERSION."
+
+# Update build.gradle file
+echo "📝 Updating build.gradle file..."
+if [ -f "monetai-sdk/build.gradle" ]; then
+    # Update versionName
+    sed -i.bak "s/versionName \".*\"/versionName \"$VERSION\"/" monetai-sdk/build.gradle
+    
+    # Update versionCode (using current timestamp)
+    TIMESTAMP=$(date +%s)
+    sed -i.bak "s/versionCode [0-9]*/versionCode $TIMESTAMP/" monetai-sdk/build.gradle
+    
+    # Remove backup file
+    rm -f monetai-sdk/build.gradle.bak
+    
+    echo "✅ build.gradle file updated:"
+    echo "   - versionName: $VERSION"
+    echo "   - versionCode: $TIMESTAMP"
+else
+    echo "⚠️  monetai-sdk/build.gradle file not found."
+fi
+
+
+
+echo ""
+echo "🎉 Version update completed!"
+echo "📋 Next steps:"
+echo "   1. Review changes: git diff"
+echo "   2. Commit changes: git add . && git commit -m 'chore: bump version to $VERSION'"
+echo "   3. Create tag: git tag -a 'v$VERSION' -m 'Release version $VERSION'"
+echo "   4. Push: git push origin main && git push origin 'v$VERSION'"
+echo ""
+echo "💡 Tip: Modifying the .version file and pushing to main branch will trigger automatic deployment." 

@@ -1,0 +1,132 @@
+name: Create Release PR
+
+on:
+  push:
+    branches:
+      - "release/*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  # Auto version bump, commit and create PR
+  auto-release:
+    name: Auto Version Bump & Create PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Extract version from branch name or input
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION=${{ inputs.version }}
+            echo "Using manual input version: $VERSION"
+          else
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+            VERSION=${BRANCH_NAME#release/}
+            echo "Using version from branch: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Final version: $VERSION"
+
+      - name: Validate version format
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z or X.Y.Z-beta.N"
+            exit 1
+          fi
+          echo "Version format is valid: $VERSION"
+
+      - name: Create release branch (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        id: create_branch
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          BRANCH_NAME="release/$VERSION"
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "Created and pushed branch: $BRANCH_NAME"
+
+      - name: Update version in build.gradle
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          # Update version in monetai-sdk/build.gradle
+          sed -i "s/versionName \".*\"/versionName \"$VERSION\"/" monetai-sdk/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode $(date +%s)/" monetai-sdk/build.gradle
+          echo "Updated build.gradle version to: $VERSION"
+
+      - name: Update .version file
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "$VERSION" > .version
+          echo "Updated .version file to: $VERSION"
+
+      - name: Commit and push version update
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          git add .
+          git commit -m "chore: bump version to $VERSION"
+          # Use the created branch for manual trigger, otherwise use current branch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            BRANCH_NAME="release/$VERSION"
+            git push origin $BRANCH_NAME
+            echo "Pushed version update to new release branch: $BRANCH_NAME"
+          else
+            git push origin ${{ github.ref }}
+            echo "Pushed version update to existing release branch"
+          fi
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          BRANCH_NAME="release/$VERSION"
+
+          # Create PR using GitHub CLI
+          gh pr create \
+            --head $BRANCH_NAME \
+            --base main \
+            --title "Release v$VERSION" \
+            --body "## Release v$VERSION
+
+          ### Changes
+          - Bump version to $VERSION
+          - Update build.gradle versionName and versionCode
+          - Update .version file
+
+          ### Checklist
+          - [ ] Version bump completed
+          - [ ] Ready for release
+
+          ### Next Steps
+          1. Review the changes
+          2. Merge this PR to trigger deployment
+          3. Deployment will automatically:
+             - Create git tag v$VERSION
+             - Trigger JitPack build
+             - Create GitHub Release
+
+          ### JitPack Build
+          After merging, JitPack will automatically build the release:
+          https://jitpack.io/#hayanmind/monetai-android" \
+            --label "release,version-bump" \
+            --assignee ${{ github.actor }}
+
+          echo "Created PR for release v$VERSION"
