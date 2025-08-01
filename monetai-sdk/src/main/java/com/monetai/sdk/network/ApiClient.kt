@@ -49,7 +49,6 @@ class EmptyResponseConverter : Converter.Factory() {
  * API client for Monetai SDK
  */
 object ApiClient {
-    // iOS SDK와 동일한 base URL 사용
     private const val BASE_URL = "https://monetai-api-414410537412.us-central1.run.app/sdk/"
     
     private val gson: Gson = GsonBuilder()
