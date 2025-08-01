@@ -55,6 +55,21 @@ else
     echo "⚠️  monetai-sdk/build.gradle file not found."
 fi
 
+# Update SDKVersion.kt file
+echo "📝 Updating SDKVersion.kt file..."
+if [ -f "monetai-sdk/src/main/java/com/monetai/sdk/SDKVersion.kt" ]; then
+    # Update VERSION constant
+    sed -i.bak "s/private const val VERSION = \".*\"/private const val VERSION = \"$VERSION\"/" monetai-sdk/src/main/java/com/monetai/sdk/SDKVersion.kt
+    
+    # Remove backup file
+    rm -f monetai-sdk/src/main/java/com/monetai/sdk/SDKVersion.kt.bak
+    
+    echo "✅ SDKVersion.kt file updated:"
+    echo "   - VERSION constant: $VERSION"
+else
+    echo "⚠️  SDKVersion.kt file not found."
+fi
+
 echo ""
 echo "🎉 Version update completed!"
 echo "📋 Next steps:"
