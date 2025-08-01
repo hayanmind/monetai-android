@@ -29,24 +29,31 @@ echo "✅ .version file updated to $VERSION."
 # Update build.gradle file
 echo "📝 Updating build.gradle file..."
 if [ -f "monetai-sdk/build.gradle" ]; then
+    # Read current version code from build.gradle and increment it
+    CURRENT_VERSION_CODE=$(grep -o "versionCode [0-9]*" monetai-sdk/build.gradle | awk '{print $2}')
+    if [ -z "$CURRENT_VERSION_CODE" ]; then
+        echo "⚠️  Could not find versionCode in build.gradle, starting with 1"
+        NEW_VERSION_CODE=1
+    else
+        NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+        echo "📊 Current versionCode: $CURRENT_VERSION_CODE → New versionCode: $NEW_VERSION_CODE"
+    fi
+    
     # Update versionName
     sed -i.bak "s/versionName \".*\"/versionName \"$VERSION\"/" monetai-sdk/build.gradle
     
-    # Update versionCode (using current timestamp)
-    TIMESTAMP=$(date +%s)
-    sed -i.bak "s/versionCode [0-9]*/versionCode $TIMESTAMP/" monetai-sdk/build.gradle
+    # Update versionCode with sequential number
+    sed -i.bak "s/versionCode [0-9]*/versionCode $NEW_VERSION_CODE/" monetai-sdk/build.gradle
     
     # Remove backup file
     rm -f monetai-sdk/build.gradle.bak
     
     echo "✅ build.gradle file updated:"
     echo "   - versionName: $VERSION"
-    echo "   - versionCode: $TIMESTAMP"
+    echo "   - versionCode: $NEW_VERSION_CODE"
 else
     echo "⚠️  monetai-sdk/build.gradle file not found."
 fi
-
-
 
 echo ""
 echo "🎉 Version update completed!"
