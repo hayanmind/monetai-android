@@ -42,16 +42,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Final version: $VERSION"
 
-      - name: Validate version format
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-            echo "Invalid version format: $VERSION"
-            echo "Expected format: X.Y.Z or X.Y.Z-beta.N"
-            exit 1
-          fi
-          echo "Version format is valid: $VERSION"
-
       - name: Create release branch (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
         id: create_branch
@@ -63,19 +53,12 @@ jobs:
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "Created and pushed branch: $BRANCH_NAME"
 
-      - name: Update version in build.gradle
+      - name: Update version using script
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          # Update version in monetai-sdk/build.gradle
-          sed -i "s/versionName \".*\"/versionName \"$VERSION\"/" monetai-sdk/build.gradle
-          sed -i "s/versionCode [0-9]*/versionCode $(date +%s)/" monetai-sdk/build.gradle
-          echo "Updated build.gradle version to: $VERSION"
-
-      - name: Update .version file
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          echo "$VERSION" > .version
-          echo "Updated .version file to: $VERSION"
+          chmod +x scripts/update_version.sh
+          ./scripts/update_version.sh $VERSION
+          echo "✅ Version updated to $VERSION using update_version.sh script"
 
       - name: Commit and push version update
         run: |
@@ -107,7 +90,7 @@ jobs:
             --body "## Release v$VERSION
 
           ### Changes
-          - Bump version to $VERSION
+          - Bump version to $VERSION using update_version.sh script
           - Update build.gradle versionName and versionCode
           - Update .version file
 
