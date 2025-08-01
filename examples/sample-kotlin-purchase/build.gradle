@@ -55,9 +55,6 @@ android {
 }
 
 dependencies {
-    // Use JitPack dependency instead of local project
-    // implementation 'com.github.hayanmind:monetai-android:feature~fix-jitpack-build-SNAPSHOT'
-
     implementation project(':monetai-sdk')
     
     // AndroidX dependencies
