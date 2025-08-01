@@ -28,7 +28,7 @@ Ready to integrate Monetai SDK into your app? Check out our comprehensive docume
 
 Check out our comprehensive example projects demonstrating different integration methods:
 
-📱 **[View All Examples →](Examples/)**
+📱 **[View All Examples →](examples/)**
 
 ## Support
 
