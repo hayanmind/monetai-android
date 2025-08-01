@@ -1,23 +1,5 @@
 jdk:
-  - openjdk11
-
-before_install:
-  - echo "JitPack build started"
+  - openjdk17
 
 install:
-  - echo "Installing dependencies"
-
-before_script:
-  - echo "Preparing build"
-
-script:
-  - ./gradlew clean
-  - ./gradlew build
-  - ./gradlew test
-  - ./gradlew assembleRelease
-
-after_success:
-  - echo "Build successful"
-
-after_failure:
-  - echo "Build failed"
+  - ./gradlew :monetai-sdk:assembleRelease :monetai-sdk:publishReleasePublicationToMavenLocal

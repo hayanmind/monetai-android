@@ -42,9 +42,6 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test
 
-      - name: Build project
-        run: ./gradlew build
-
       - name: Build release
         run: ./gradlew assembleRelease
 
