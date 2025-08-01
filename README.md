@@ -23,7 +23,6 @@ Ready to integrate Monetai SDK into your app? Check out our comprehensive docume
 ## Requirements
 
 - Android API level 21+
-- Android Studio Arctic Fox or later
 
 ## Examples
 
