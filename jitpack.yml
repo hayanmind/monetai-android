@@ -2,4 +2,4 @@ jdk:
   - openjdk17
 
 install:
-  - ./gradlew :monetai-sdk:assembleRelease
+  - ./gradlew :monetai-sdk:assembleRelease :monetai-sdk:publishReleasePublicationToMavenLocal
