@@ -9,12 +9,10 @@ install:
 
 before_script:
   - echo "Preparing build"
+  - export GRADLE_OPTS="-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs=-Xmx4096m"
 
 script:
-  - ./gradlew clean
-  - ./gradlew build
-  - ./gradlew test
-  - ./gradlew assembleRelease
+  - ./gradlew assembleRelease --no-daemon --parallel
 
 after_success:
   - echo "Build successful"

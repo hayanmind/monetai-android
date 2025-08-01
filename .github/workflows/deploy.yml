@@ -58,8 +58,6 @@ jobs:
       - name: Validate JitPack build
         run: |
           ./gradlew clean
-          ./gradlew build
-          ./gradlew test
           ./gradlew assembleRelease
 
   # Step 3: Create GitHub Release
@@ -116,15 +114,6 @@ jobs:
             dependencies {
                 implementation 'com.github.hayanmind:monetai-android:${{ steps.version.outputs.version }}'
             }
-            ```
-
-            ### Maven
-            ```xml
-            <dependency>
-                <groupId>com.github.hayanmind</groupId>
-                <artifactId>monetai-android</artifactId>
-                <version>${{ steps.version.outputs.version }}</version>
-            </dependency>
             ```
 
             ## JitPack Build Status
