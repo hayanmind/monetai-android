@@ -79,77 +79,78 @@ class MonetaiSDK private constructor() {
     ) {
         internalScope.launch {
             try {
-                val result = withContext(Dispatchers.Main) {
-                    // Validation
-                    require(sdkKey.isNotEmpty()) { "SDK key cannot be empty" }
-                    require(userId.isNotEmpty()) { "User ID cannot be empty" }
-                    
-                    // Reset if already initialized with different credentials
-                    if (isInitialized && (this@MonetaiSDK.sdkKey != sdkKey || this@MonetaiSDK.userId != userId)) {
-                        Log.d(TAG, "SDK already initialized with different credentials - resetting")
-                        reset()
-                    }
-                    
-                    Log.d(TAG, "Initializing Monetai SDK...")
-                    
+                // Validation
+                require(sdkKey.isNotEmpty()) { "SDK key cannot be empty" }
+                require(userId.isNotEmpty()) { "User ID cannot be empty" }
+
+                // Reset if already initialized with different credentials
+                if (isInitialized && (this@MonetaiSDK.sdkKey != sdkKey || this@MonetaiSDK.userId != userId)) {
+                    Log.d(TAG, "SDK already initialized with different credentials - resetting")
+                    reset()
+                }
+
+                Log.d(TAG, "Initializing Monetai SDK...")
+
+                // Minimal main-thread section: AndroidThreeTen init, SharedPreferences, Billing setup
+                withContext(Dispatchers.Main) {
                     // Initialize ThreeTenABP for timezone support
                     AndroidThreeTen.init(context)
-                    
+
                     // Initialize SharedPreferences
                     sharedPreferences = context.getSharedPreferences("MonetaiPrefs", Context.MODE_PRIVATE)
-                    
+
                     // Store SDK key and user ID in SharedPreferences
                     sharedPreferences?.edit()
                         ?.putString("MonetaiSdkKey", sdkKey)
                         ?.putString("MonetaiAppAccountToken", userId)
                         ?.apply()
-                    
+
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
-                    
-                    // Start billing observation
+
+                    // Start billing observation (BillingClient requires main thread)
                     billingManager = BillingManager(context)
                     billingManager?.startObserving()
-                    
-                    // Send receipt
-                    launch {
-                        try {
-                            receiptValidator = ReceiptValidator(context)
-                            receiptValidator?.sendReceipt()
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to send receipt", e)
-                        }
-                    }
-                    
-                    // API initialization
-                    val (initResponse, abTestResponse) = ApiRequests.initialize(sdkKey = sdkKey, userId = userId)
-                    
-                    // Store initialization data
-                    this@MonetaiSDK.organizationId = initResponse.organization_id
-                    this@MonetaiSDK.abTestGroup = abTestResponse.group
-                    this@MonetaiSDK.campaign = abTestResponse.campaign
-                    this@MonetaiSDK.exposureTimeSec = abTestResponse.campaign?.exposureTimeSec
-                    
-                    // Initialization complete
-                    isInitialized = true
-                    
-                    // Process pending events
-                    Log.d(TAG, "SDK initialization complete - Starting to process pending events...")
-                    processPendingEvents()
-                    Log.d(TAG, "Pending events processing complete")
-                    
-                    // Automatically check discount information after initialization
-                    loadDiscountInfoAutomatically()
-                    
-                    InitializeResult(
-                        organizationId = initResponse.organization_id,
-                        platform = initResponse.platform,
-                        version = initResponse.version,
-                        userId = userId,
-                        group = abTestResponse.group
-                    )
                 }
+
+                // Send receipt asynchronously in background (does not block initialization)
+                launch {
+                    try {
+                        receiptValidator = ReceiptValidator(context)
+                        receiptValidator?.sendReceipt()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to send receipt", e)
+                    }
+                }
+
+                // API initialization (IO)
+                val (initResponse, abTestResponse) = ApiRequests.initialize(sdkKey = sdkKey, userId = userId)
+
+                // Store initialization data (IO)
+                this@MonetaiSDK.organizationId = initResponse.organization_id
+                this@MonetaiSDK.abTestGroup = abTestResponse.group
+                this@MonetaiSDK.campaign = abTestResponse.campaign
+                this@MonetaiSDK.exposureTimeSec = abTestResponse.campaign?.exposureTimeSec
+
+                // Initialization complete (IO)
+                isInitialized = true
+
+                // Process pending events (IO)
+                Log.d(TAG, "SDK initialization complete - Starting to process pending events...")
+                processPendingEvents()
+                Log.d(TAG, "Pending events processing complete")
+
+                // Automatically check discount information after initialization (IO)
+                loadDiscountInfoAutomatically()
+
+                val result = InitializeResult(
+                    organizationId = initResponse.organization_id,
+                    platform = initResponse.platform,
+                    version = initResponse.version,
+                    userId = userId,
+                    group = abTestResponse.group
+                )
                 
                 withContext(Dispatchers.Main) {
                     completion?.invoke(result, null)
@@ -180,16 +181,20 @@ class MonetaiSDK private constructor() {
             
             // Update state
             currentDiscount = discount
-            
-            // Call callback if set
-            onDiscountInfoChange?.invoke(discount)
+
+            // Call callback on main thread if set
+            withContext(Dispatchers.Main) {
+                onDiscountInfoChange?.invoke(discount)
+            }
             
             Log.d(TAG, "Discount information auto-load complete: ${if (discount != null) "Discount available" else "No discount"}")
             
         } catch (e: Exception) {
             Log.e(TAG, "Discount information auto-load failed", e)
             currentDiscount = null
-            onDiscountInfoChange?.invoke(null)
+            withContext(Dispatchers.Main) {
+                onDiscountInfoChange?.invoke(null)
+            }
         }
     }
     
