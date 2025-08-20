@@ -44,9 +44,7 @@ class ReceiptValidator(private val context: Context) {
         val packageName = context.packageName
         val sdkKey = sharedPreferences.getString("MonetaiSdkKey", null)
         
-        Log.d(TAG, "[Debug] userId: ${if (userId != null) "exists" else "null"}")
-        Log.d(TAG, "[Debug] packageName: $packageName")
-        Log.d(TAG, "[Debug] sdkKey: ${if (sdkKey != null) "exists" else "null"}")
+        Log.d(TAG, "[Debug] Credentials check completed")
         
         if (userId == null || sdkKey == null) {
             val errorMsg = "Required information is missing - userId: ${userId != null}, sdkKey: ${sdkKey != null}"
@@ -288,7 +286,7 @@ class BillingManager(private val context: Context) :
             put("sdkKey", sdkKey)
         }
         
-        Log.d(TAG, "[Debug] POST to $MAPPING_URL: $payload")
+        Log.d(TAG, "[Debug] Sending purchase mapping to server")
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
