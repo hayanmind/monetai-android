@@ -1,7 +1,6 @@
 package com.monetai.sdk.billing
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import com.android.billingclient.api.*
 import com.monetai.sdk.MonetaiSDK
@@ -21,17 +20,14 @@ import java.net.URL
 /**
  * Receipt validation and transmission logic
  */
-class ReceiptValidator(private val context: Context) {
+class ReceiptValidator(
+    private val context: Context,
+    private val sdkKey: String,
+    private val userId: String
+) {
     companion object {
         private const val TAG = "ReceiptValidator"
         private const val RECEIPT_VALIDATION_URL = "https://monetai-api-414410537412.us-central1.run.app/sdk/transaction-id-to-user-id/android/receipt"
-    }
-    
-    // Remove static instance to prevent memory leak
-    // Use dependency injection or create new instance when needed
-    
-    private val sharedPreferences: SharedPreferences by lazy {
-        context.getSharedPreferences("MonetaiPrefs", Context.MODE_PRIVATE)
     }
     
     /**
@@ -40,19 +36,9 @@ class ReceiptValidator(private val context: Context) {
     suspend fun sendReceipt() {
         Log.d(TAG, "[Debug] sendReceipt started")
         
-        val userId = sharedPreferences.getString("MonetaiAppAccountToken", null)
         val packageName = context.packageName
-        val sdkKey = sharedPreferences.getString("MonetaiSdkKey", null)
         
-        Log.d(TAG, "[Debug] userId: ${if (userId != null) "exists" else "null"}")
-        Log.d(TAG, "[Debug] packageName: $packageName")
-        Log.d(TAG, "[Debug] sdkKey: ${if (sdkKey != null) "exists" else "null"}")
-        
-        if (userId == null || sdkKey == null) {
-            val errorMsg = "Required information is missing - userId: ${userId != null}, sdkKey: ${sdkKey != null}"
-            Log.e(TAG, "[Error] $errorMsg")
-            throw IllegalStateException(errorMsg)
-        }
+        Log.d(TAG, "[Debug] Credentials check completed")
         
         Log.d(TAG, "[Debug] calling queryAndSyncPurchaseHistory")
         queryAndSyncPurchaseHistory(userId, packageName, sdkKey)
@@ -184,12 +170,15 @@ class ReceiptValidator(private val context: Context) {
     }
 }
 
-// MARK: - Billing Manager
 /**
- * Google Play Billing manager for Monetai SDK
+ * Billing manager for handling in-app purchases and subscriptions
  * Updated for Google Play Billing Library 7.0.0
  */
-class BillingManager(private val context: Context) : 
+class BillingManager(
+    private val context: Context,
+    private val sdkKey: String,
+    private val userId: String
+) : 
     PurchasesUpdatedListener, BillingClientStateListener {
     
     companion object {
@@ -197,14 +186,8 @@ class BillingManager(private val context: Context) :
         private const val MAPPING_URL = "https://monetai-api-414410537412.us-central1.run.app/sdk/transaction-id-to-user-id/android"
     }
     
-    // Remove static instance to prevent memory leak
-    // Use dependency injection or create new instance when needed
-    
     private var billingClient: BillingClient? = null
-    private val sharedPreferences: SharedPreferences by lazy {
-        context.getSharedPreferences("MonetaiPrefs", Context.MODE_PRIVATE)
-    }
-    
+
     /**
      * Start purchase observation
      */
@@ -272,14 +255,7 @@ class BillingManager(private val context: Context) :
     private fun sendMapping(purchaseToken: String) {
         Log.d(TAG, "[Debug] sendMapping: $purchaseToken")
         
-        val userId = sharedPreferences.getString("MonetaiAppAccountToken", null)
         val packageName = context.packageName
-        val sdkKey = sharedPreferences.getString("MonetaiSdkKey", null)
-        
-        if (userId == null || sdkKey == null) {
-            Log.e(TAG, "[Error] no userId or sdkKey set")
-            return
-        }
         
         val payload = JSONObject().apply {
             put("purchaseToken", purchaseToken)
@@ -288,7 +264,7 @@ class BillingManager(private val context: Context) :
             put("sdkKey", sdkKey)
         }
         
-        Log.d(TAG, "[Debug] POST to $MAPPING_URL: $payload")
+        Log.d(TAG, "[Debug] Sending purchase mapping to server")
         
         CoroutineScope(Dispatchers.IO).launch {
             try {

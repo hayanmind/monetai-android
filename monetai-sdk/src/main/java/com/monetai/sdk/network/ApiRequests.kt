@@ -17,7 +17,7 @@ object ApiRequests {
      */
     suspend fun initialize(sdkKey: String, userId: String): Pair<InitializeResponse, com.monetai.sdk.models.ABTestResponse> {
         return try {
-            Log.d("ApiRequests", "Initializing SDK with sdkKey: $sdkKey, userId: $userId")
+            Log.d("ApiRequests", "Initializing SDK")
             
             val request = InitializeRequest(
                 sdkKey = sdkKey,
@@ -25,11 +25,7 @@ object ApiRequests {
                 version = SDKVersion.getVersion()
             )
             
-            Log.d("ApiRequests", "InitializeRequest: $request")
-            
             val response = ApiClient.apiService.initialize(request)
-            
-            Log.d("ApiRequests", "Initialize response received: $response")
             
             // Get AB test group from actual API
             val abTestRequest = ABTestRequest(
@@ -39,8 +35,6 @@ object ApiRequests {
             )
             
             val abTestResponse = ApiClient.apiService.getABTestGroup(abTestRequest)
-            
-            Log.d("ApiRequests", "AB test response received: $abTestResponse")
             
             Log.d("ApiRequests", "SDK initialization successful")
             Pair(response, abTestResponse.toABTestResponse())

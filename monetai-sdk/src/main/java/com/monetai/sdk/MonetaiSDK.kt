@@ -1,7 +1,6 @@
 package com.monetai.sdk
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import com.monetai.sdk.billing.BillingManager
 import com.monetai.sdk.billing.ReceiptValidator
@@ -37,9 +36,6 @@ class MonetaiSDK private constructor() {
     private var organizationId: Int? = null
     private var abTestGroup: ABTestGroup? = null
     private val pendingEvents = ConcurrentLinkedQueue<LogEventOptions>()
-    
-    // SharedPreferences for storing SDK data
-    private var sharedPreferences: SharedPreferences? = null
     
     // Billing components
     private var billingManager: BillingManager? = null
@@ -96,28 +92,21 @@ class MonetaiSDK private constructor() {
                     // Initialize ThreeTenABP for timezone support
                     AndroidThreeTen.init(context)
 
-                    // Initialize SharedPreferences
-                    sharedPreferences = context.getSharedPreferences("MonetaiPrefs", Context.MODE_PRIVATE)
 
-                    // Store SDK key and user ID in SharedPreferences
-                    sharedPreferences?.edit()
-                        ?.putString("MonetaiSdkKey", sdkKey)
-                        ?.putString("MonetaiAppAccountToken", userId)
-                        ?.apply()
 
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
 
                     // Start billing observation (BillingClient requires main thread)
-                    billingManager = BillingManager(context)
+                    billingManager = BillingManager(context, sdkKey, userId)
                     billingManager?.startObserving()
                 }
 
                 // Send receipt asynchronously in background (does not block initialization)
                 launch {
                     try {
-                        receiptValidator = ReceiptValidator(context)
+                        receiptValidator = ReceiptValidator(context, sdkKey, userId)
                         receiptValidator?.sendReceipt()
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to send receipt", e)
@@ -338,11 +327,7 @@ class MonetaiSDK private constructor() {
         pendingEvents.clear()
         currentDiscount = null
         
-        // Clear SharedPreferences
-        sharedPreferences?.edit()
-            ?.remove("MonetaiSdkKey")
-            ?.remove("MonetaiAppAccountToken")
-            ?.apply()
+
         
         // Stop billing observation
         billingManager?.stopObserving()
