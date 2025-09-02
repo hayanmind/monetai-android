@@ -93,20 +93,20 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="30dp" />
 
-    <!-- Result Label -->
+    <!-- Subscription Status Label -->
     <TextView
-        android:id="@+id/resultLabel"
-        android:layout_width="0dp"
+        android:id="@+id/subscriptionStatusLabel"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Tap buttons to test SDK functionality"
-        android:textColor="@android:color/darker_gray"
+        android:text="Subscription Status: ❌ Non-subscriber"
+        android:textColor="@android:color/holo_red_dark"
         android:textSize="14sp"
         android:textAlignment="center"
-        android:maxLines="0"
-        android:ellipsize="end"
         app:layout_constraintTop_toBottomOf="@id/discountStatusLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="20dp" />
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

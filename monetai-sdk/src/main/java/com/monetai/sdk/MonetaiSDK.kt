@@ -6,6 +6,8 @@ import com.monetai.sdk.billing.BillingManager
 import com.monetai.sdk.billing.ReceiptValidator
 import com.monetai.sdk.models.*
 import com.monetai.sdk.network.ApiRequests
+import com.monetai.sdk.paywall.MonetaiPaywallManager
+import com.monetai.sdk.banner.MonetaiBannerManager
 import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -37,9 +39,20 @@ class MonetaiSDK private constructor() {
     private var abTestGroup: ABTestGroup? = null
     private val pendingEvents = ConcurrentLinkedQueue<LogEventOptions>()
     
+    // Application context for UI components
+    private var applicationContext: Context? = null
     // Billing components
     private var billingManager: BillingManager? = null
     private var receiptValidator: ReceiptValidator? = null
+    
+    // Paywall and Banner components
+    internal val paywallManager = MonetaiPaywallManager()
+    internal val bannerManager: MonetaiBannerManager by lazy { 
+        MonetaiBannerManager(applicationContext ?: throw IllegalStateException("SDK not initialized. Call initialize() first."))
+    }
+    
+    // Paywall Configuration
+    private var paywallConfig: PaywallConfig? = null
     
     // Coroutine scope for internal operations
     private val internalScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -53,6 +66,9 @@ class MonetaiSDK private constructor() {
                 value(currentDiscount)
             }
         }
+    
+    // MARK: - Subscription State
+    private var isSubscriber: Boolean = false
     
     // MARK: - Internal Properties
     internal val currentSDKKey: String? get() = sdkKey
@@ -81,22 +97,18 @@ class MonetaiSDK private constructor() {
 
                 // Reset if already initialized with different credentials
                 if (isInitialized && (this@MonetaiSDK.sdkKey != sdkKey || this@MonetaiSDK.userId != userId)) {
-                    Log.d(TAG, "SDK already initialized with different credentials - resetting")
                     reset()
                 }
 
-                Log.d(TAG, "Initializing Monetai SDK...")
-
-                // Minimal main-thread section: AndroidThreeTen init, SharedPreferences, Billing setup
+                // Minimal main-thread section: AndroidThreeTen init, Billing setup
                 withContext(Dispatchers.Main) {
                     // Initialize ThreeTenABP for timezone support
                     AndroidThreeTen.init(context)
 
-
-
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
+                    this@MonetaiSDK.applicationContext = context // Store application context
 
                     // Start billing observation (BillingClient requires main thread)
                     billingManager = BillingManager(context, sdkKey, userId)
@@ -126,9 +138,7 @@ class MonetaiSDK private constructor() {
                 isInitialized = true
 
                 // Process pending events (IO)
-                Log.d(TAG, "SDK initialization complete - Starting to process pending events...")
                 processPendingEvents()
-                Log.d(TAG, "Pending events processing complete")
 
                 // Automatically check discount information after initialization (IO)
                 loadDiscountInfoAutomatically()
@@ -176,8 +186,6 @@ class MonetaiSDK private constructor() {
                 onDiscountInfoChange?.invoke(discount)
             }
             
-            Log.d(TAG, "Discount information auto-load complete: ${if (discount != null) "Discount available" else "No discount"}")
-            
         } catch (e: Exception) {
             Log.e(TAG, "Discount information auto-load failed", e)
             currentDiscount = null
@@ -192,21 +200,14 @@ class MonetaiSDK private constructor() {
      * @param options Event options to log
      */
     fun logEvent(options: LogEventOptions) {
-        Log.d(TAG, "Event logging request: ${options.eventName}")
-        Log.d(TAG, "Event parameters: ${options.params ?: emptyMap()}")
-        
         val sdkKey = sdkKey
         val userId = userId
         
         if (sdkKey == null || userId == null) {
             // Add to queue if SDK is not initialized
             pendingEvents.offer(options)
-            Log.d(TAG, "Before SDK initialization - Added to queue: ${options.eventName}")
-            Log.d(TAG, "Current number of pending events: ${pendingEvents.size}")
             return
         }
-        
-        Log.d(TAG, "SDK initialized - Sending immediately: ${options.eventName}")
         
         internalScope.launch {
             try {
@@ -217,7 +218,6 @@ class MonetaiSDK private constructor() {
                     params = options.params,
                     createdAt = options.createdAt
                 )
-                Log.d(TAG, "Event logging success: ${options.eventName}")
             } catch (e: Exception) {
                 Log.e(TAG, "Event logging failed: ${options.eventName}", e)
             }
@@ -327,8 +327,6 @@ class MonetaiSDK private constructor() {
         pendingEvents.clear()
         currentDiscount = null
         
-
-        
         // Stop billing observation
         billingManager?.stopObserving()
         billingManager = null
@@ -358,6 +356,41 @@ class MonetaiSDK private constructor() {
      */
     fun getExposureTimeSec(): Int? = exposureTimeSec
     
+    /**
+     * Set subscription status (can be called before or after configurePaywall)
+     * @param isSubscriber Whether the user is currently a subscriber
+     */
+    fun setSubscriptionStatus(isSubscriber: Boolean) {
+        this.isSubscriber = isSubscriber
+        
+        // SDK automatically updates all UI when subscription status changes
+        if (paywallConfig != null) {
+            configureManagersAndUpdateUI()
+        }
+    }
+    
+    /**
+     * Get current subscription status
+     */
+    fun getSubscriptionStatus(): Boolean = isSubscriber
+    
+    /**
+     * Get application context
+     */
+    fun getApplicationContext(): Context? = applicationContext
+    
+    /**
+     * Configure paywall with configuration
+     * @param config Paywall configuration
+     */
+    fun configurePaywall(config: PaywallConfig) {
+        this.paywallConfig = config
+        
+        // SDK automatically configures managers and updates UI
+        configureManagersAndUpdateUI()
+    }
+    
+    
     // MARK: - Private Methods
     
     /**
@@ -379,19 +412,11 @@ class MonetaiSDK private constructor() {
             pendingEvents.poll()?.let { events.add(it) }
         }
         
-        Log.d(TAG, "Starting to process pending events")
-        Log.d(TAG, "Number of events to process: ${events.size}")
-        
         if (events.isEmpty()) {
-            Log.d(TAG, "No pending events to process")
             return
         }
         
-        Log.d(TAG, "List of events to process: ${events.map { it.eventName }}")
-        
-        events.forEachIndexed { index, event ->
-            Log.d(TAG, "Processing ${index + 1}/${events.size}: ${event.eventName}")
-            
+        events.forEach { event ->
             try {
                 ApiRequests.createEvent(
                     sdkKey = sdkKey,
@@ -400,9 +425,8 @@ class MonetaiSDK private constructor() {
                     params = event.params,
                     createdAt = event.createdAt
                 )
-                Log.d(TAG, "${index + 1}/${events.size} Success: ${event.eventName}")
             } catch (e: Exception) {
-                Log.e(TAG, "${index + 1}/${events.size} Failed: ${event.eventName}", e)
+                Log.e(TAG, "Failed to process event: ${event.eventName}", e)
             }
         }
     }
@@ -430,16 +454,98 @@ class MonetaiSDK private constructor() {
                     endedAt = endedAt
                 )
                 
-                // Update state
-                currentDiscount = discount
-                
-                // Call callback
-                onDiscountInfoChange?.invoke(discount)
-                
-                Log.d(TAG, "Non-purchaser discount created successfully")
+                // Update state and UI automatically
+                handleDiscountInfoChange(discount)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create non-purchaser discount", e)
+        }
+    }
+    
+    // MARK: - Paywall and Banner Management
+    
+    /**
+     * Configure managers and update UI automatically
+     */
+    private fun configureManagersAndUpdateUI() {
+        val config = paywallConfig ?: return
+        
+        // 1. Configure paywall manager
+        paywallManager.configure(config, convertToDiscountInfo())
+        
+        // 2. Configure banner manager (no rootView needed for window overlay)
+        bannerManager.configure(config, convertToDiscountInfo(), paywallManager)
+        
+        // 3. Automatically update banner visibility
+        updateBannerVisibilityAutomatically()
+        
+        // 4. Paywall will be preloaded when banner is shown (better timing)
+    }
+    
+    /**
+     * Update banner visibility automatically based on subscription status
+     */
+    private fun updateBannerVisibilityAutomatically() {
+        // Hide banner if user is subscriber
+        if (isSubscriber) {
+            bannerManager.hideBanner()
+        } else {
+            // Show banner if discount is active and paywall is enabled
+            val shouldShow = shouldShowBanner()
+            
+            if (shouldShow) {
+                bannerManager.showBanner()
+            }
+        }
+    }
+    
+    /**
+     * Check if banner should be shown
+     */
+    private fun shouldShowBanner(): Boolean {
+        return currentDiscount?.let { discount ->
+            discount.endedAt > Date() && paywallConfig?.enabled == true
+        } ?: false
+    }
+    
+    /**
+     * Check if paywall should be shown automatically
+     */
+    private fun shouldShowPaywall(): Boolean {
+        return currentDiscount?.let { discount ->
+            discount.endedAt > Date() && paywallConfig?.enabled == true && !isSubscriber
+        } ?: false
+    }
+    
+    /**
+     * Convert AppUserDiscount to DiscountInfo
+     */
+    private fun convertToDiscountInfo(): DiscountInfo? {
+        val currentDiscount = currentDiscount ?: return null
+        
+        return DiscountInfo(
+            startedAt = currentDiscount.startedAt,
+            endedAt = currentDiscount.endedAt,
+            userId = currentDiscount.appUserId,
+            sdkKey = currentDiscount.sdkKey
+        )
+    }
+    
+    /**
+     * Handle discount info change and update UI automatically
+     */
+    private fun handleDiscountInfoChange(discount: AppUserDiscount?) {
+        currentDiscount = discount
+        
+        // Switch to main thread for UI updates
+        internalScope.launch(Dispatchers.Main) {
+            // Update managers with new discount info
+            if (paywallConfig != null) {
+                configureManagersAndUpdateUI()
+            }
+            
+            // Call external callback
+            onDiscountInfoChange?.invoke(discount)
         }
     }
 } 
