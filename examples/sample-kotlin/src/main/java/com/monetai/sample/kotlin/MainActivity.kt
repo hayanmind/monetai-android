@@ -7,8 +7,10 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import com.monetai.sample.kotlin.databinding.ActivityMainBinding
 import com.monetai.sdk.MonetaiSDK
-import com.monetai.sample.kotlin.views.DiscountBannerView
 import com.monetai.sdk.models.PredictResult
+import com.monetai.sdk.models.Feature
+import com.monetai.sdk.models.PaywallConfig
+import com.monetai.sdk.models.PaywallStyle
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -16,7 +18,10 @@ class MainActivity : AppCompatActivity() {
 
     // MARK: - UI Elements
     private lateinit var binding: ActivityMainBinding
-    private var discountBannerView: DiscountBannerView? = null
+    
+    // MARK: - Paywall State
+    private var isSubscriber: Boolean = false
+    private var paywallConfig: PaywallConfig? = null
 
     // MARK: - Constants
     companion object {
@@ -34,6 +39,9 @@ class MainActivity : AppCompatActivity() {
         MonetaiSDK.shared.logEvent("app_in")
         
         setupMonetaiSDK()
+        
+        // Initialize subscription UI
+        updateSubscriptionUI()
     }
 
     // MARK: - UI Setup
@@ -42,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         binding.titleLabel.text = "MonetaiSDK Demo"
         binding.statusLabel.text = "SDK Status: Initializing..."
         binding.discountStatusLabel.text = "Discount: None"
-        binding.resultLabel.text = "Tap buttons to test SDK functionality"
+
 
         // Setup button click listeners
         binding.predictButton.setOnClickListener { predictButtonTapped() }
@@ -67,20 +75,26 @@ class MainActivity : AppCompatActivity() {
                 if (error != null) {
                     // SDK initialization failed
                     updateSDKStatus()
-                    binding.resultLabel.text = "❌ SDK initialization failed: ${error.message}"
-                    binding.resultLabel.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_dark))
                 } else {
                     // SDK initialized successfully
                     updateSDKStatus()
-                    binding.resultLabel.text = "✅ SDK initialized successfully!"
-                    binding.resultLabel.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark))
                     
                     // Set up discount info change callback AFTER initialization
                     MonetaiSDK.shared.onDiscountInfoChange = { discountInfo ->
                         runOnUiThread {
+                            println("🎯 Discount info changed callback triggered")
+                            println("  discountInfo: $discountInfo")
+                            println("  current time: ${Date()}")
+                            if (discountInfo != null) {
+                                println("  discount end time: ${discountInfo.endedAt}")
+                                println("  is discount active: ${discountInfo.endedAt > Date()}")
+                            }
                             handleDiscountInfoChange(discountInfo)
                         }
                     }
+                    
+                    // Set up paywall AFTER initialization
+                    setupPaywall()
                 }
             }
         }
@@ -88,26 +102,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSDKStatus() {
         val isInitialized = MonetaiSDK.shared.getInitialized()
+        binding.statusLabel.text = "SDK Status: ${if (isInitialized) "✅ Initialized" else "❌ Not Initialized"}"
         
-        if (isInitialized) {
-            binding.statusLabel.text = "SDK Status: ✅ Ready"
-            binding.statusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-            
-            // Enable buttons
-            binding.predictButton.isEnabled = true
-            binding.logEventButton.isEnabled = true
-            binding.predictButton.alpha = 1.0f
-            binding.logEventButton.alpha = 1.0f
-        } else {
-            binding.statusLabel.text = "SDK Status: ⏳ Initializing..."
-            binding.statusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark))
-            
-            // Disable buttons
-            binding.predictButton.isEnabled = false
-            binding.logEventButton.isEnabled = false
-            binding.predictButton.alpha = 0.5f
-            binding.logEventButton.alpha = 0.5f
-        }
+        // Enable buttons only after initialization
+        binding.predictButton.isEnabled = isInitialized
+        binding.logEventButton.isEnabled = isInitialized
+        binding.predictButton.alpha = if (isInitialized) 1.0f else 0.5f
+        binding.logEventButton.alpha = if (isInitialized) 1.0f else 0.5f
     }
 
     private fun handleDiscountInfoChange(discountInfo: com.monetai.sdk.models.AppUserDiscount?) {
@@ -123,92 +124,46 @@ class MainActivity : AppCompatActivity() {
             println("  Time difference (ms): ${endTime.time - now.time}")
 
             if (now < endTime) {
-                // Discount is valid - show banner
+                // Discount is valid - SDK will automatically show banner
                 binding.discountStatusLabel.text = "Discount: ✅ Active (Expires: ${dateFormat.format(endTime)})"
                 binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-                showDiscountBanner(discountInfo)
+                println("🎯 Discount is active - SDK should automatically show banner")
             } else {
                 // Discount expired
                 binding.discountStatusLabel.text = "Discount: ❌ Expired"
                 binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-                hideDiscountBanner()
+                println("❌ Discount expired - SDK should automatically hide banner")
             }
         } else {
             // No discount
             binding.discountStatusLabel.text = "Discount: None"
             binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
-            hideDiscountBanner()
+            println("📭 No discount - SDK should automatically hide banner")
         }
     }
 
-    private fun showDiscountBanner(discount: com.monetai.sdk.models.AppUserDiscount) {
-        // Remove existing banner if any
-        hideDiscountBanner()
 
-        // Create and add new banner
-        discountBannerView = DiscountBannerView(this)
-        
-        // Debug logging
-        println("🎯 showDiscountBanner called")
-        println("  discountBannerView created: ${discountBannerView != null}")
-        println("  rootLayout: ${binding.rootLayout}")
-        
-        // Add banner to root layout
-        binding.rootLayout.addView(discountBannerView)
-        
-        // Set layout parameters to position at bottom
-        val layoutParams = ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_PARENT,
-            ConstraintLayout.LayoutParams.WRAP_CONTENT
-        ).apply {
-            bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            bottomMargin = 20
-            leftMargin = 16
-            rightMargin = 16
-        }
-        discountBannerView?.layoutParams = layoutParams
-        
-        println("  Banner added to rootLayout")
-        println("  Banner visibility before showDiscount: ${discountBannerView?.visibility}")
-
-        // Show discount
-        discountBannerView?.showDiscount(discount)
-
-        // Update result label
-        binding.resultLabel.text = "🎉 Discount banner displayed!\nSpecial offer is now active."
-        binding.resultLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-        
-        println("  showDiscountBanner completed")
-    }
-
-    private fun hideDiscountBanner() {
-        discountBannerView?.hideDiscount()
-        discountBannerView = null
-    }
 
     // MARK: - Button Actions
     private fun predictButtonTapped() {
         MonetaiSDK.shared.predict { result, error ->
             runOnUiThread {
                 if (error != null) {
-                    binding.resultLabel.text = "❌ Prediction failed: ${error.message}"
-                    binding.resultLabel.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_dark))
                     println("Prediction failed: $error")
                 } else {
                     result?.let { predictResult ->
                         println("Prediction result: ${predictResult.prediction}")
                         println("Test group: ${predictResult.testGroup}")
 
-                        when (predictResult?.prediction) {
+                        when (predictResult.prediction) {
                             PredictResult.NON_PURCHASER -> {
-                                // When predicted as non-purchaser, offer discount
-                                println("Predicted as non-purchaser - discount can be applied")
+                                // When predicted as non-purchaser, SDK should automatically show paywall
+                                println("Predicted as non-purchaser - SDK should automatically show paywall")
+                                println("Note: If paywall doesn't appear, check SDK's automatic display logic")
                             }
                             PredictResult.PURCHASER -> {
                                 // When predicted as purchaser
-                                println("Predicted as purchaser - discount not needed")
+                                println("Predicted as purchaser - paywall not needed")
                             }
                             null -> {
                                 // When prediction is null
@@ -216,18 +171,138 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
-                        binding.resultLabel.text = "✅ Prediction completed - check console for details"
-                        binding.resultLabel.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark))
-
                         // Show alert with prediction result
                         AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Purchase Prediction")
+                            .setTitle("AI Purchase Prediction Result")
                             .setMessage("Prediction: ${predictResult.prediction}\nTest Group: ${predictResult.testGroup}")
                             .setPositiveButton("OK", null)
                             .show()
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - Paywall Methods
+    private fun setupPaywall() {
+        paywallConfig = PaywallConfig(
+            discountPercent = 30,
+            regularPrice = "$99.99",
+            discountedPrice = "$69.99",
+            locale = "ko",
+            style = PaywallStyle.COMPACT,
+            features = listOf(
+                Feature(
+                    title = "Unlimited Access",
+                    description = "Use all premium features without limits",
+                    isPremiumOnly = true
+                ),
+                Feature(
+                    title = "Advanced Analytics",
+                    description = "AI-powered insights",
+                    isPremiumOnly = false
+                ),
+                Feature(
+                    title = "Priority Support",
+                    description = "24/7 customer support",
+                    isPremiumOnly = false
+                )
+            ),
+            enabled = true,
+            bannerBottom = 20f,
+            isSubscriber = isSubscriber,
+            
+            
+            onPurchase = { paywallContext, closePaywall ->
+                println("💰 MainActivity: onPurchase callback triggered")
+                println("  📱 Activity: ${paywallContext.activity.javaClass.simpleName}")
+                println("  🏗️ App Context: ${paywallContext.applicationContext.javaClass.simpleName}")
+                
+                // Process purchase immediately
+                println("💰 Processing purchase...")
+                // Update subscription status
+                isSubscriber = true
+                MonetaiSDK.shared.setSubscriptionStatus(true)
+                updateSubscriptionUI()
+                // Close paywall
+                closePaywall()
+                println("✅ Purchase completed successfully")
+            },
+            onTermsOfService = { paywallContext ->
+                println("🔗 MainActivity: onTermsOfService callback triggered")
+                println("  📱 Activity: ${paywallContext.activity.javaClass.simpleName}")
+                showTermsOfService(paywallContext)
+            },
+            onPrivacyPolicy = { paywallContext ->
+                println("🔗 MainActivity: onPrivacyPolicy callback triggered") 
+                println("  📱 Activity: ${paywallContext.activity.javaClass.simpleName}")
+                showPrivacyPolicy(paywallContext)
+            }
+        )
+        
+        paywallConfig?.let { config ->
+            // Configure paywall
+            MonetaiSDK.shared.configurePaywall(config)
+            println("🎯 Paywall configured successfully")
+            println("  config.enabled: ${config.enabled}")
+            println("  config.isSubscriber: ${config.isSubscriber}")
+            println("  config.bannerBottom: ${config.bannerBottom}")
+        }
+    }
+    
+    private fun updateSubscriptionUI() {
+        val statusText = if (isSubscriber) "✅ Subscriber" else "❌ Non-subscriber"
+        binding.subscriptionStatusLabel.text = "Subscription Status: $statusText"
+        binding.subscriptionStatusLabel.setTextColor(
+            if (isSubscriber) 
+                ContextCompat.getColor(this, android.R.color.holo_green_dark)
+            else 
+                ContextCompat.getColor(this, android.R.color.holo_red_dark)
+        )
+    }
+    
+    
+        private fun showTermsOfService(paywallContext: com.monetai.sdk.models.PaywallContext) {
+        println("📄 MainActivity: showTermsOfService() called")
+        println("  🎯 Context from: ${paywallContext.activity.javaClass.simpleName}")
+        
+        // Use the Activity from PaywallContext for better dialog management
+        val contextActivity = paywallContext.activity
+        
+        // PaywallContext의 Activity는 이미 MonetaiPaywallActivity이므로 직접 사용
+        contextActivity.runOnUiThread {
+            val contextInfo = "Called from: ${paywallContext.activity.javaClass.simpleName}"
+            
+            // 가장 간단한 기본 다이얼로그 - PaywallActivity에서 직접 표시
+            AlertDialog.Builder(contextActivity)
+                .setTitle("Terms of Service")
+                .setMessage("Terms of service content will be displayed here.\n\n$contextInfo")
+                .setPositiveButton("OK", null)
+                .show()
+            
+            println("✅ Terms of Service dialog shown on PaywallActivity: ${contextActivity.javaClass.simpleName}")
+        }
+    }
+    
+        private fun showPrivacyPolicy(paywallContext: com.monetai.sdk.models.PaywallContext) {
+        println("🔒 MainActivity: showPrivacyPolicy() called")
+        println("  🎯 Context from: ${paywallContext.activity.javaClass.simpleName}")
+        
+        // Use the Activity from PaywallContext for better dialog management
+        val contextActivity = paywallContext.activity
+        
+        // PaywallContext의 Activity는 이미 MonetaiPaywallActivity이므로 직접 사용
+        contextActivity.runOnUiThread {
+            val contextInfo = "Called from: ${paywallContext.activity.javaClass.simpleName}"
+            
+            // 가장 간단한 기본 다이얼로그 - PaywallActivity에서 직접 표시
+            AlertDialog.Builder(contextActivity)
+                .setTitle("Privacy Policy")
+                .setMessage("Privacy policy content will be displayed here.\n\n$contextInfo")
+                .setPositiveButton("OK", null)
+                .show()
+            
+            println("✅ Privacy Policy dialog shown on PaywallActivity: ${contextActivity.javaClass.simpleName}")
         }
     }
 
@@ -240,8 +315,7 @@ class MainActivity : AppCompatActivity() {
         
         MonetaiSDK.shared.logEvent("button_click", params)
 
-        binding.resultLabel.text = "✅ Event logged: button_click\nParameters: button=test_button, screen=main"
-        binding.resultLabel.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark))
+
 
         println("Event logged: button_click")
     }

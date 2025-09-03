@@ -8,10 +8,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.monetai.sample.java.databinding.ActivityMainBinding;
-import com.monetai.sample.java.views.DiscountBannerView;
 import com.monetai.sdk.MonetaiSDKJava;
 import com.monetai.sdk.models.AppUserDiscount;
 import com.monetai.sdk.models.PredictResult;
+import com.monetai.sdk.models.PaywallConfig;
+import com.monetai.sdk.models.PaywallStyle;
+import com.monetai.sdk.models.Feature;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -20,16 +22,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Arrays;
 
 
 
 public class MainActivity extends AppCompatActivity {
     
     private ActivityMainBinding binding;
-    private DiscountBannerView discountBannerView;
     private static final String TAG = "MainActivity";
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    
+    // MARK: - Paywall State
+    private PaywallConfig paywallConfig;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,10 +72,8 @@ public class MainActivity extends AppCompatActivity {
             (result, error) -> {
                 if (error != null) {
                     Log.e(TAG, "SDK initialization failed", error);
-                    updateStatus("SDK initialization failed: " + error.getMessage());
                 } else {
                     Log.d(TAG, "SDK initialized successfully: " + result);
-                    updateStatus("SDK Status: ✅ Ready");
                     
                     // Enable buttons after successful initialization
                     runOnUiThread(() -> {
@@ -84,17 +87,14 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "Discount info changed: " + discount);
                         handleDiscountInfoChange(discount);
                     });
+                    
+                    // Set up paywall AFTER initialization
+                    setupPaywall();
                 }
             }
         );
     }
     
-    private void updateStatus(String message) {
-        runOnUiThread(() -> {
-            binding.statusLabel.setText(message);
-            Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
-        });
-    }
     
     private void handleDiscountInfoChange(AppUserDiscount discountInfo) {
         runOnUiThread(() -> {
@@ -110,73 +110,22 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("  Time difference (ms): " + (endTime.getTime() - now.getTime()));
 
                 if (now.before(endTime)) {
-                    // Discount is valid - show banner
+                    // Discount is valid - SDK banner will be shown automatically
                     binding.discountStatusLabel.setText("Discount: ✅ Active (Expires: " + dateFormat.format(endTime) + ")");
                     binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
-                    showDiscountBanner(discountInfo);
                 } else {
                     // Discount expired
                     binding.discountStatusLabel.setText("Discount: ❌ Expired");
                     binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
-                    hideDiscountBanner();
                 }
             } else {
                 // No discount
                 binding.discountStatusLabel.setText("Discount: None");
                 binding.discountStatusLabel.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-                hideDiscountBanner();
             }
         });
     }
 
-    private void showDiscountBanner(AppUserDiscount discount) {
-        // Remove existing banner if any
-        hideDiscountBanner();
-
-        // Create and add new banner
-        discountBannerView = new DiscountBannerView(this);
-        
-        // Debug logging
-        System.out.println("🎯 showDiscountBanner called");
-        System.out.println("  discountBannerView created: " + (discountBannerView != null));
-        System.out.println("  rootLayout: " + binding.getRoot());
-        
-        // Add banner to root layout
-        binding.getRoot().addView(discountBannerView);
-        
-        // Set layout parameters to position at bottom
-        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams layoutParams = 
-            new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
-                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.MATCH_PARENT,
-                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.WRAP_CONTENT
-            );
-        layoutParams.bottomToBottom = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
-        layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
-        layoutParams.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
-        layoutParams.bottomMargin = 20;
-        layoutParams.leftMargin = 16;
-        layoutParams.rightMargin = 16;
-        discountBannerView.setLayoutParams(layoutParams);
-        
-        System.out.println("  Banner added to rootLayout");
-        System.out.println("  Banner visibility before showDiscount: " + discountBannerView.getVisibility());
-
-        // Show discount
-        discountBannerView.showDiscount(discount);
-
-        // Update result label
-        binding.resultLabel.setText("🎉 Discount banner displayed!\nSpecial offer is now active.");
-        binding.resultLabel.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark));
-        
-        System.out.println("  showDiscountBanner completed");
-    }
-
-    private void hideDiscountBanner() {
-        if (discountBannerView != null) {
-            discountBannerView.hideDiscount();
-            discountBannerView = null;
-        }
-    }
 
     // MARK: - Button Actions
     private void predictButtonTapped() {
@@ -198,11 +147,12 @@ public class MainActivity extends AppCompatActivity {
                             if (result.getPrediction() != null) {
                                 PredictResult prediction = result.getPrediction();
                                 if (prediction == PredictResult.NON_PURCHASER) {
-                                    // When predicted as non-purchaser, offer discount
-                                    System.out.println("Predicted as non-purchaser - discount can be applied");
+                                    // When predicted as non-purchaser, SDK should automatically show paywall
+                                    System.out.println("Predicted as non-purchaser - SDK should automatically show paywall");
+                                    System.out.println("Note: If paywall doesn't appear, check SDK's automatic display logic");
                                 } else if (prediction == PredictResult.PURCHASER) {
                                     // When predicted as purchaser
-                                    System.out.println("Predicted as purchaser - discount not needed");
+                                    System.out.println("Predicted as purchaser - paywall not needed");
                                 }
                             } else {
                                 // When prediction is null
@@ -255,6 +205,113 @@ public class MainActivity extends AppCompatActivity {
             });
 
             System.out.println("Event logged: button_click");
+        });
+    }
+    
+    // MARK: - Paywall Methods
+    private void setupPaywall() {
+        paywallConfig = MonetaiSDKJava.createPaywallConfigBuilder()
+            .discountPercent(30)
+            .regularPrice("$99.99")
+            .discountedPrice("$69.99")
+            .locale("en")
+            .style(PaywallStyle.COMPACT)
+            .features(Arrays.asList(
+                new Feature("Unlimited Access", "Use all premium features without limits", true),
+                new Feature("Advanced Analytics", "AI-powered insights", false),
+                new Feature("Priority Support", "24/7 customer support", false)
+            ))
+            .enabled(true)
+            .bannerBottom(20f)
+            .isSubscriber(false)
+            .onPurchase(new MonetaiSDKJava.OnPurchaseCallback() {
+                @Override
+                public void onPurchase(com.monetai.sdk.models.PaywallContext paywallContext, Runnable closePaywall) {
+                    System.out.println("🛒 Purchase button tapped in paywall!");
+                    System.out.println("  📱 Activity: " + paywallContext.getActivity().getClass().getSimpleName());
+                    System.out.println("  🏗️ App Context: " + paywallContext.getApplicationContext().getClass().getSimpleName());
+                    
+                    runOnUiThread(() -> {
+                        // Simulate subscription purchase
+                        MonetaiSDKJava.setSubscriptionStatus(true);
+                        
+                        // Show success toast
+                        Toast.makeText(MainActivity.this, "🎉 Purchase successful! Welcome to Premium!", Toast.LENGTH_SHORT).show();
+                    });
+                    
+                    // Close paywall
+                    closePaywall.run();
+                }
+            })
+            .onTermsOfService(new MonetaiSDKJava.OnTermsOfServiceCallback() {
+                @Override
+                public void onTermsOfService(com.monetai.sdk.models.PaywallContext paywallContext) {
+                    System.out.println("📄 Terms of Service tapped!");
+                    System.out.println("  📱 Activity: " + paywallContext.getActivity().getClass().getSimpleName());
+                    showTermsOfService(paywallContext);
+                }
+            })
+            .onPrivacyPolicy(new MonetaiSDKJava.OnPrivacyPolicyCallback() {
+                @Override
+                public void onPrivacyPolicy(com.monetai.sdk.models.PaywallContext paywallContext) {
+                    System.out.println("🔒 Privacy Policy tapped!");
+                    System.out.println("  📱 Activity: " + paywallContext.getActivity().getClass().getSimpleName());
+                    showPrivacyPolicy(paywallContext);
+                }
+            })
+            .build();
+        
+        if (paywallConfig != null) {
+            // Configure paywall
+            MonetaiSDKJava.configurePaywall(paywallConfig);
+            System.out.println("🎯 Paywall configured successfully");
+        }
+    }
+    
+    // MARK: - Paywall Callback Helpers
+    private static void showTermsOfService(com.monetai.sdk.models.PaywallContext paywallContext) {
+        System.out.println("📄 Showing Terms of Service...");
+        System.out.println("  🎯 Context from: " + paywallContext.getActivity().getClass().getSimpleName());
+        
+        // Use the Activity from PaywallContext for better dialog management
+        android.app.Activity contextActivity = paywallContext.getActivity();
+        
+        // PaywallContext의 Activity는 이미 MonetaiPaywallActivity이므로 직접 사용
+        contextActivity.runOnUiThread(() -> {
+            String contextInfo = "Called from: " + paywallContext.getActivity().getClass().getSimpleName();
+            
+            // 가장 간단한 기본 다이얼로그 - PaywallActivity에서 직접 표시
+            new AlertDialog.Builder(contextActivity)
+                .setTitle("Terms of Service")
+                .setMessage("Terms of Service content goes here...\n\n" + contextInfo)
+                .setPositiveButton("Accept", null)
+                .setNegativeButton("Cancel", null)
+                .show();
+            
+            System.out.println("✅ Terms of Service dialog shown on PaywallActivity: " + contextActivity.getClass().getSimpleName());
+        });
+    }
+    
+    private static void showPrivacyPolicy(com.monetai.sdk.models.PaywallContext paywallContext) {
+        System.out.println("🔒 Showing Privacy Policy...");
+        System.out.println("  🎯 Context from: " + paywallContext.getActivity().getClass().getSimpleName());
+        
+        // Use the Activity from PaywallContext for better dialog management
+        android.app.Activity contextActivity = paywallContext.getActivity();
+        
+        // PaywallContext의 Activity는 이미 MonetaiPaywallActivity이므로 직접 사용
+        contextActivity.runOnUiThread(() -> {
+            String contextInfo = "Called from: " + paywallContext.getActivity().getClass().getSimpleName();
+            
+            // 가장 간단한 기본 다이얼로그 - PaywallActivity에서 직접 표시
+            new AlertDialog.Builder(contextActivity)
+                .setTitle("Privacy Policy")
+                .setMessage("Privacy Policy content goes here...\n\n" + contextInfo)
+                .setPositiveButton("Accept", null)
+                .setNegativeButton("Cancel", null)
+                .show();
+            
+            System.out.println("✅ Privacy Policy dialog shown on PaywallActivity: " + contextActivity.getClass().getSimpleName());
         });
     }
 } 

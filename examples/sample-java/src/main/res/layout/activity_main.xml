@@ -93,18 +93,32 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="30dp" />
 
+    <!-- Subscription Status Label -->
+    <TextView
+        android:id="@+id/subscriptionStatusLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="구독 상태: ❌ 비구독자"
+        android:textColor="@android:color/holo_red_dark"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/discountStatusLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="20dp" />
+
     <!-- Result Label -->
     <TextView
         android:id="@+id/resultLabel"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Tap buttons to test SDK functionality"
+        android:text="Tap 'Predict Purchase' button to test AI-based paywall"
         android:textColor="@android:color/darker_gray"
         android:textSize="14sp"
         android:textAlignment="center"
         android:maxLines="0"
         android:ellipsize="end"
-        app:layout_constraintTop_toBottomOf="@id/discountStatusLabel"
+        app:layout_constraintTop_toBottomOf="@id/subscriptionStatusLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="20dp" />
