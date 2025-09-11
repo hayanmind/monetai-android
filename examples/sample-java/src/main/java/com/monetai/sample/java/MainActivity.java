@@ -72,11 +72,19 @@ public class MainActivity extends AppCompatActivity {
             (result, error) -> {
                 if (error != null) {
                     Log.e(TAG, "SDK initialization failed", error);
+                    
+                    // Update status to show initialization failed
+                    runOnUiThread(() -> {
+                        binding.statusLabel.setText("SDK Status: ❌ Failed to Initialize");
+                        binding.statusLabel.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.holo_red_dark));
+                    });
                 } else {
                     Log.d(TAG, "SDK initialized successfully: " + result);
                     
-                    // Enable buttons after successful initialization
+                    // Enable buttons and update status after successful initialization
                     runOnUiThread(() -> {
+                        binding.statusLabel.setText("SDK Status: ✅ Initialized");
+                        binding.statusLabel.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.holo_green_dark));
                         binding.predictButton.setEnabled(true);
                         binding.logEventButton.setEnabled(true);
                     });
