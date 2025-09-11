@@ -1,18 +1,8 @@
-# Rules for consumers of the library
-# This file is automatically included in the consumer's build.gradle
+# MonetAI SDK ProGuard rules for consumers
+# This file is automatically included in the consumer's ProGuard configuration
 
-# Keep public API classes
--keep public class com.monetai.sdk.MonetaiSDK { *; }
--keep public class com.monetai.sdk.MonetaiSDKJava { *; }
--keep public class com.monetai.sdk.models.** { *; }
-
-# Keep public methods and fields
--keepclassmembers public class com.monetai.sdk.** {
-    public *;
-}
-
-# Keep enum values
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-} 
+# Keep all MonetAI SDK classes, interfaces, and enums to prevent obfuscation issues
+# Since the SDK is open source, there's no security concern with preserving class names
+-keep class com.monetai.sdk.** { *; }
+-keep interface com.monetai.sdk.** { *; }
+-keep enum com.monetai.sdk.** { *; } 
