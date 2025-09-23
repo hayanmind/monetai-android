@@ -143,7 +143,6 @@ class ReceiptValidator(
         val purchasesList = purchases.map { purchase ->
             JSONObject().apply {
                 put("purchaseToken", purchase.purchaseToken)
-                put("orderId", purchase.orderId)
             }
         }
         
