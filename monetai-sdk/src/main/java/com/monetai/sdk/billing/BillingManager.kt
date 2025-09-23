@@ -40,15 +40,15 @@ class ReceiptValidator(
         
         Log.d(TAG, "[Debug] Credentials check completed")
         
-        Log.d(TAG, "[Debug] calling queryAndSyncPurchaseHistory")
-        queryAndSyncPurchaseHistory(userId, packageName, sdkKey)
+        Log.d(TAG, "[Debug] calling queryAndSyncActivePurchases")
+        queryAndSyncActivePurchases(userId, packageName, sdkKey)
     }
     
     /**
-     * Query and sync purchase history
+     * Query and sync active purchases
      */
-    private suspend fun queryAndSyncPurchaseHistory(userId: String, packageName: String, sdkKey: String) {
-        Log.d(TAG, "[Debug] queryAndSyncPurchaseHistory started")
+    private suspend fun queryAndSyncActivePurchases(userId: String, packageName: String, sdkKey: String) {
+        Log.d(TAG, "[Debug] queryAndSyncActivePurchases started")
         
         val deferred = CompletableDeferred<Unit>()
         
@@ -57,7 +57,11 @@ class ReceiptValidator(
                 // Dummy listener for purchase history query
                 Log.d(TAG, "[Debug] dummy listener called: ${billingResult.responseCode}")
             }
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .build()
+            )
             .build()
             
         billingClient.startConnection(object : BillingClientStateListener {
@@ -65,43 +69,44 @@ class ReceiptValidator(
                 Log.d(TAG, "[Debug] onBillingSetupFinished: ${billingResult.responseCode}")
                 
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                    Log.d(TAG, "[Debug] starting in-app purchase history query")
-                    // Query in-app purchase history
-                    val inappParams = QueryPurchaseHistoryParams.newBuilder()
-                        .setProductType(BillingClient.ProductType.INAPP)
-                        .build()
+                    Log.d(TAG, "[Debug] starting in-app purchase query")
+                    // Query in-app active purchases
                         
-                    billingClient.queryPurchaseHistoryAsync(inappParams) { result1, inappPurchases ->
-                        Log.d(TAG, "[Debug] in-app purchase history query completed: ${result1.responseCode}, count: ${inappPurchases?.size ?: 0}")
-                        
-                        // Query subscription history
-                        Log.d(TAG, "[Debug] starting subscription history query")
-                        val subsParams = QueryPurchaseHistoryParams.newBuilder()
-                            .setProductType(BillingClient.ProductType.SUBS)
+                    billingClient.queryPurchasesAsync(
+                        QueryPurchasesParams.newBuilder()
+                            .setProductType(BillingClient.ProductType.INAPP)
                             .build()
-                            
-                        billingClient.queryPurchaseHistoryAsync(subsParams) { result2, subsPurchases ->
+                    ) { result1, inappPurchases ->
+                        Log.d(TAG, "[Debug] in-app purchase query completed: ${result1.responseCode}, count: ${inappPurchases.size}")
+
+                        // Query subscription purchases
+                        Log.d(TAG, "[Debug] starting subscription query")
+                        billingClient.queryPurchasesAsync(
+                            QueryPurchasesParams.newBuilder()
+                                .setProductType(BillingClient.ProductType.SUBS)
+                                .build()
+                        ) { result2, subsPurchases ->
                             try {
-                                Log.d(TAG, "[Debug] subscription history query completed: ${result2.responseCode}, count: ${subsPurchases?.size ?: 0}")
-                                
-                                val allPurchases = (inappPurchases ?: emptyList()) + (subsPurchases ?: emptyList())
+                                Log.d(TAG, "[Debug] subscription query completed: ${result2.responseCode}, count: ${subsPurchases.size}")
+
+                                val allPurchases = inappPurchases + subsPurchases
                                 
                                 // Add debugging logs
-                                Log.d(TAG, "[Debug] total purchase history count: ${allPurchases.size}")
-                                Log.d(TAG, "[Debug] in-app purchase count: ${inappPurchases?.size ?: 0}")
-                                Log.d(TAG, "[Debug] subscription purchase count: ${subsPurchases?.size ?: 0}")
+                                Log.d(TAG, "[Debug] total active purchases count: ${allPurchases.size}")
+                                Log.d(TAG, "[Debug] in-app purchase count: ${inappPurchases.size}")
+                                Log.d(TAG, "[Debug] subscription purchase count: ${subsPurchases.size}")
                                 
                                 if (allPurchases.isNotEmpty()) {
-                                    sendPurchaseHistoryToServer(userId, packageName, sdkKey, allPurchases)
-                                    Log.d(TAG, "[Debug] purchase history server transmission completed")
+                                    sendActivePurchasesToServer(userId, packageName, sdkKey, allPurchases)
+                                    Log.d(TAG, "[Debug] active purchases server transmission completed")
                                 } else {
-                                    Log.d(TAG, "[Debug] no purchase history found")
+                                    Log.d(TAG, "[Debug] no active purchases found")
                                 }
                                 
                                 billingClient.endConnection()
                                 deferred.complete(Unit)
                             } catch (e: Exception) {
-                                Log.e(TAG, "[Error] error during purchase history processing: ${e.message}")
+                                Log.e(TAG, "[Error] error during active purchases processing: ${e.message}")
                                 billingClient.endConnection()
                                 deferred.completeExceptionally(e)
                             }
@@ -127,18 +132,17 @@ class ReceiptValidator(
     }
     
     /**
-     * Send purchase history to server
+     * Send active purchases to server
      */
-    private fun sendPurchaseHistoryToServer(
-        userId: String, 
-        packageName: String, 
-        sdkKey: String, 
-        purchases: List<PurchaseHistoryRecord>
+    private fun sendActivePurchasesToServer(
+        userId: String,
+        packageName: String,
+        sdkKey: String,
+        purchases: List<Purchase>
     ) {
         val purchasesList = purchases.map { purchase ->
             JSONObject().apply {
                 put("purchaseToken", purchase.purchaseToken)
-                // PurchaseHistoryRecord doesn't have orderId
             }
         }
         
@@ -162,9 +166,9 @@ class ReceiptValidator(
                 }
                 
                 val responseCode = connection.responseCode
-                Log.d(TAG, "[Debug] purchase history sync response: $responseCode")
+                Log.d(TAG, "[Debug] active purchases sync response: $responseCode")
             } catch (e: Exception) {
-                Log.e(TAG, "[Error] purchase history sync failed: ${e.message}")
+                Log.e(TAG, "[Error] active purchases sync failed: ${e.message}")
             }
         }
     }
@@ -196,7 +200,11 @@ class BillingManager(
         
         billingClient = BillingClient.newBuilder(context)
             .setListener(this)
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .build()
+            )
             .build()
             
         billingClient?.startConnection(this)
