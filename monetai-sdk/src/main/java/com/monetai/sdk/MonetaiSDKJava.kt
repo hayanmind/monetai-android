@@ -120,6 +120,13 @@ class MonetaiSDKJava {
     }
     
     /**
+     * Log view product item event (Java compatible)
+     */
+    fun logViewProductItem(params: ViewProductItemParams) {
+        MonetaiSDK.shared.logViewProductItem(params)
+    }
+    
+    /**
      * Log event with options (Java compatible)
      */
     fun logEvent(options: LogEventOptions) {

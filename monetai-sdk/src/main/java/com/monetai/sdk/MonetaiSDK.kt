@@ -225,6 +225,33 @@ class MonetaiSDK private constructor() {
     }
     
     /**
+     * Log view product item event (dedicated endpoint)
+     * @param params Event parameters
+     */
+    fun logViewProductItem(params: ViewProductItemParams) {
+        val sdkKey = sdkKey
+        val userId = userId
+        
+        if (sdkKey == null || userId == null) {
+            Log.w(TAG, "logViewProductItem called before SDK initialization; event ignored.")
+            return
+        }
+        
+        internalScope.launch {
+            try {
+                ApiRequests.logViewProductItem(
+                    sdkKey = sdkKey,
+                    userId = userId,
+                    params = params,
+                    createdAt = Date()
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "logViewProductItem failed", e)
+            }
+        }
+    }
+    
+    /**
      * Log event (basic method)
      * @param eventName Event name
      * @param params Event parameters (optional)

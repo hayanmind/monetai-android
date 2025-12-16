@@ -9,7 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.revenuecat.purchases.Package
 
 class ProductAdapter(
-    private val onPurchaseClick: (Package) -> Unit
+    private val onPurchaseClick: (Package) -> Unit,
+    private val onProductVisible: (Package) -> Unit
 ) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
     
     private var products: List<Package> = emptyList()
@@ -26,7 +27,9 @@ class ProductAdapter(
     }
     
     override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        holder.bind(products[position])
+        val packageItem = products[position]
+        holder.bind(packageItem)
+        onProductVisible(packageItem)
     }
     
     override fun getItemCount(): Int = products.size

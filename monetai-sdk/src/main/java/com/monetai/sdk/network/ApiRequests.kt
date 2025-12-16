@@ -87,6 +87,36 @@ object ApiRequests {
     }
     
     /**
+     * Log product item view event
+     */
+    suspend fun logViewProductItem(
+        sdkKey: String,
+        userId: String,
+        params: ViewProductItemParams,
+        createdAt: Date = Date()
+    ) {
+        try {
+            val formattedDate = DateTimeHelper.formatToISO8601(createdAt)
+            
+            val request = ViewProductItemRequest(
+                sdkKey = sdkKey,
+                userId = userId,
+                productId = params.productId,
+                price = params.price,
+                regularPrice = params.regularPrice,
+                currencyCode = params.currencyCode,
+                month = params.month,
+                createdAt = formattedDate,
+                platform = "android"
+            )
+            
+            ApiClient.apiService.logViewProductItem(request)
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+    
+    /**
      * Predict user behavior
      */
     suspend fun predict(sdkKey: String, userId: String): PredictApiResponse {

@@ -3,10 +3,11 @@ package com.monetai.sample.kotlin
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.monetai.sample.kotlin.databinding.ActivityMainBinding
 import com.monetai.sdk.MonetaiSDK
+import com.monetai.sdk.models.ViewProductItemParams
 import com.monetai.sdk.models.PredictResult
 import com.monetai.sdk.models.Feature
 import com.monetai.sdk.models.PaywallConfig
@@ -22,6 +23,29 @@ class MainActivity : AppCompatActivity() {
     // MARK: - Paywall State
     private var isSubscriber: Boolean = false
     private var paywallConfig: PaywallConfig? = null
+    
+    // MARK: - Fake Products
+    private lateinit var fakeProductAdapter: FakeProductAdapter
+    private val fakeProducts: List<FakeProduct> = listOf(
+        FakeProduct(
+            id = "fake_basic_monthly",
+            title = "Basic Plan",
+            description = "Essential features for starters",
+            price = 4.99,
+            regularPrice = 9.98,
+            currencyCode = "USD",
+            month = 1
+        ),
+        FakeProduct(
+            id = "fake_pro_yearly",
+            title = "Pro Plan",
+            description = "Advanced tools for power users",
+            price = 59.99,
+            regularPrice = 119.98,
+            currencyCode = "USD",
+            month = 12
+        )
+    )
 
     // MARK: - Constants
     companion object {
@@ -61,6 +85,15 @@ class MainActivity : AppCompatActivity() {
         binding.logEventButton.isEnabled = false
         binding.predictButton.alpha = 0.5f
         binding.logEventButton.alpha = 0.5f
+        
+        // Fake products list
+        fakeProductAdapter = FakeProductAdapter { product ->
+            logFakeProductViewed(product)
+        }
+        binding.recyclerViewFakeProducts.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = fakeProductAdapter
+        }
     }
 
     // MARK: - MonetaiSDK Setup
@@ -78,6 +111,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     // SDK initialized successfully
                     updateSDKStatus()
+                    
+                    // Load fake products after initialization for logging
+                    loadFakeProducts()
                     
                     // Set up discount info change callback AFTER initialization
                     MonetaiSDK.shared.onDiscountInfoChange = { discountInfo ->
@@ -318,5 +354,29 @@ class MainActivity : AppCompatActivity() {
 
 
         println("Event logged: button_click")
+    }
+    
+    // MARK: - Fake Products
+    private fun loadFakeProducts() {
+        fakeProductAdapter.submitList(fakeProducts)
+    }
+    
+    private fun logFakeProductViewed(product: FakeProduct) {
+        if (!MonetaiSDK.shared.getInitialized()) return
+        
+        val params = ViewProductItemParams(
+            productId = product.id,
+            price = product.price,
+            regularPrice = product.regularPrice,
+            currencyCode = product.currencyCode,
+            month = product.month
+        )
+        
+        try {
+            MonetaiSDK.shared.logViewProductItem(params)
+            println("✅ Logged fake product view: ${product.id}")
+        } catch (e: Exception) {
+            println("❌ Failed to log fake product view: ${product.id}, error: $e")
+        }
     }
 } 

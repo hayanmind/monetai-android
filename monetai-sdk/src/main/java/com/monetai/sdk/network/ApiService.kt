@@ -25,6 +25,11 @@ interface ApiService {
         @Body request: CreateEventRequest
     ): EmptyResponse
     
+    @POST("events/view-product-item")
+    suspend fun logViewProductItem(
+        @Body request: ViewProductItemRequest
+    ): EmptyResponse
+    
     @POST("predict")
     suspend fun predict(
         @Body request: PredictRequest
@@ -117,6 +122,18 @@ data class CreateEventRequest(
     val userId: String,
     val eventName: String,
     val params: Map<String, Any>?,
+    val createdAt: String,
+    val platform: String = "android"
+)
+
+data class ViewProductItemRequest(
+    val sdkKey: String,
+    val userId: String,
+    val productId: String,
+    val price: Double,
+    val regularPrice: Double,
+    val currencyCode: String,
+    val month: Int?,
     val createdAt: String,
     val platform: String = "android"
 )

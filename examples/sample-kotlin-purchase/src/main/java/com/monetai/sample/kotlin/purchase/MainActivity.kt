@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.monetai.sdk.MonetaiSDK
 import com.monetai.sdk.models.LogEventOptions
+import com.monetai.sdk.models.ViewProductItemParams
 import com.monetai.sample.kotlin.purchase.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -16,6 +17,7 @@ import java.util.*
 
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.models.Period
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
@@ -50,9 +52,14 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupUI() {
         // Set up RecyclerView for products
-        productAdapter = ProductAdapter { packageItem ->
-            purchasePackage(packageItem)
-        }
+        productAdapter = ProductAdapter(
+            onPurchaseClick = { packageItem ->
+                purchasePackage(packageItem)
+            },
+            onProductVisible = { packageItem ->
+                logProductViewed(packageItem)
+            }
+        )
         
         binding.recyclerViewProducts.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
@@ -208,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                 
                 offerings.current?.availablePackages?.let { availablePackages ->
                     Log.d(TAG, "🛍️ [PRODUCTS] Found ${availablePackages.size} packages")
-                    
+
                     runOnUiThread {
                         productAdapter.updateProducts(availablePackages)
                         updateProductsSection()
@@ -321,6 +328,37 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this@MainActivity, "Event logged with options", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to log event with options", e)
+        }
+    }
+    
+    private fun logProductViewed(packageItem: Package) {
+        if (!isInitialized) return
+        
+        val productId = packageItem.product.id
+        
+        val price = packageItem.product.price.amountMicros / 1_000_000.0
+        val currencyCode = packageItem.product.price.currencyCode
+        val month = packageItem.product.period?.let { period ->
+            when (period.unit) {
+                Period.Unit.MONTH -> period.value
+                Period.Unit.YEAR -> period.value * 12
+                else -> null
+            }
+        }
+        
+        val params = ViewProductItemParams(
+            productId = productId,
+            price = price,
+            regularPrice = price * 2,
+            currencyCode = currencyCode,
+            month = month
+        )
+        
+        try {
+            monetaiSDK.logViewProductItem(params)
+            Log.d(TAG, "✅ [PRODUCT VIEW] Logged product view for $productId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to log product view for $productId", e)
         }
     }
     
