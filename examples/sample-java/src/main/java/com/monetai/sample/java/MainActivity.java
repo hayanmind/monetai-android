@@ -6,6 +6,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.monetai.sample.java.databinding.ActivityMainBinding;
 import com.monetai.sdk.MonetaiSDKJava;
@@ -14,6 +16,7 @@ import com.monetai.sdk.models.PredictResult;
 import com.monetai.sdk.models.PaywallConfig;
 import com.monetai.sdk.models.PaywallStyle;
 import com.monetai.sdk.models.Feature;
+import com.monetai.sdk.models.ViewProductItemParams;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -23,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Arrays;
+import java.util.List;
 
 
 
@@ -35,6 +39,29 @@ public class MainActivity extends AppCompatActivity {
     
     // MARK: - Paywall State
     private PaywallConfig paywallConfig;
+    
+    // MARK: - Fake Products
+    private FakeProductAdapter fakeProductAdapter;
+    private final List<FakeProduct> fakeProducts = Arrays.asList(
+        new FakeProduct(
+            "fake_basic_monthly",
+            "Basic Plan",
+            "Essential features for starters",
+            4.99,
+            9.98,
+            "USD",
+            1
+        ),
+        new FakeProduct(
+            "fake_pro_yearly",
+            "Pro Plan",
+            "Advanced tools for power users",
+            59.99,
+            119.98,
+            "USD",
+            12
+        )
+    );
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +87,11 @@ public class MainActivity extends AppCompatActivity {
         // Setup button click listeners
         binding.predictButton.setOnClickListener(v -> predictButtonTapped());
         binding.logEventButton.setOnClickListener(v -> logEventButtonTapped());
+        
+        // Fake products list
+        fakeProductAdapter = new FakeProductAdapter(this::logFakeProductViewed);
+        binding.recyclerViewFakeProducts.setLayoutManager(new LinearLayoutManager(this));
+        binding.recyclerViewFakeProducts.setAdapter(fakeProductAdapter);
     }
     
     private void setupMonetaiSDK() {
@@ -87,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
                         binding.statusLabel.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.holo_green_dark));
                         binding.predictButton.setEnabled(true);
                         binding.logEventButton.setEnabled(true);
+                        
+                         // Load fake products after initialization for logging
+                        loadFakeProducts();
                     });
                     
                     // Set discount info change callback AFTER initialization
@@ -213,6 +248,32 @@ public class MainActivity extends AppCompatActivity {
             });
 
             System.out.println("Event logged: button_click");
+        });
+    }
+    
+    // MARK: - Fake Products
+    private void loadFakeProducts() {
+        fakeProductAdapter.submitList(fakeProducts);
+    }
+    
+    private void logFakeProductViewed(FakeProduct product) {
+        if (!MonetaiSDKJava.getInitialized()) return;
+        
+        ViewProductItemParams params = new ViewProductItemParams(
+            product.id,
+            product.price,
+            product.regularPrice,
+            product.currencyCode,
+            product.month
+        );
+        
+        executor.execute(() -> {
+            try {
+                MonetaiSDKJava.getShared().logViewProductItem(params);
+                Log.d(TAG, "✅ Logged fake product view: " + product.id);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to log fake product view: " + product.id, e);
+            }
         });
     }
     
