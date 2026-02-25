@@ -29,20 +29,23 @@ class TimezoneDateDeserializer : JsonDeserializer<Date> {
 }
 
 /**
- * Custom converter for empty responses
+ * Custom converter that handles empty response bodies.
+ * - For EmptyResponse type: always returns EmptyResponse()
+ * - For other types: returns null if body is empty, delegates to next converter otherwise
  */
-class EmptyResponseConverter : Converter.Factory() {
+class NullOnEmptyConverterFactory : Converter.Factory() {
     override fun responseBodyConverter(
         type: Type,
         annotations: Array<out Annotation>,
         retrofit: Retrofit
     ): Converter<ResponseBody, *>? {
         if (type == EmptyResponse::class.java) {
-            return Converter<ResponseBody, EmptyResponse> { responseBody ->
-                EmptyResponse()
-            }
+            return Converter<ResponseBody, EmptyResponse> { EmptyResponse() }
         }
-        return null
+        val delegate = retrofit.nextResponseBodyConverter<Any>(this, type, annotations)
+        return Converter<ResponseBody, Any?> { body ->
+            if (body.contentLength() == 0L) null else delegate.convert(body)
+        }
     }
 }
 
@@ -91,7 +94,7 @@ object ApiClient {
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(okHttpClient)
-        .addConverterFactory(EmptyResponseConverter())
+        .addConverterFactory(NullOnEmptyConverterFactory())
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 

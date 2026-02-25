@@ -84,18 +84,24 @@ object ApiRequests {
 
             val response = ApiClient.apiService.getOffer(request)
 
-            Offer(
-                agentId = response.agentId,
-                agentName = response.agentName,
-                products = response.products.map { product ->
-                    OfferProduct(
-                        name = product.name,
-                        sku = product.sku,
-                        discountRate = product.discountRate,
-                        isManual = product.isManual
-                    )
-                }
-            )
+            if (!response.isSuccessful) {
+                throw retrofit2.HttpException(response)
+            }
+
+            response.body()?.let { body ->
+                Offer(
+                    agentId = body.agentId,
+                    agentName = body.agentName,
+                    products = body.products.map { product ->
+                        OfferProduct(
+                            name = product.name,
+                            sku = product.sku,
+                            discountRate = product.discountRate,
+                            isManual = product.isManual
+                        )
+                    }
+                )
+            }
         } catch (e: Exception) {
             Log.e("ApiRequests", "Failed to get offer", e)
             null

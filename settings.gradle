@@ -16,6 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "MonetaiAndroid"
 include ':monetai-sdk'
-include ':examples:sample-kotlin'
-include ':examples:sample-java'
-include ':examples:sample-kotlin-purchase' 
+include ':examples:sample-kotlin-purchase'
+include ':examples:sample-java-purchase' 

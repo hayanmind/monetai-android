@@ -1,5 +1,6 @@
 package com.monetai.sdk.network
 
+import retrofit2.Response
 import retrofit2.http.*
 
 /**
@@ -20,7 +21,7 @@ interface ApiService {
     @POST("offers/get-offer")
     suspend fun getOffer(
         @Body request: GetOfferRequest
-    ): GetOfferResponse
+    ): Response<GetOfferResponse>
 
     @POST("events/view-product-item")
     suspend fun logViewProductItem(
