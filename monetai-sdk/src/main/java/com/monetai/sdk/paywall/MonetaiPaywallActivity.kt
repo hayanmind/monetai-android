@@ -42,7 +42,11 @@ class MonetaiPaywallActivity : AppCompatActivity() {
         private var staticOnTermsOfService: java.lang.ref.WeakReference<((com.monetai.sdk.models.PaywallContext) -> Unit)?>? = null
         @Volatile
         private var staticOnPrivacyPolicy: java.lang.ref.WeakReference<((com.monetai.sdk.models.PaywallContext) -> Unit)?>? = null
-        
+
+        // Track the current running Activity instance for programmatic dismiss
+        @Volatile
+        private var currentInstance: java.lang.ref.WeakReference<MonetaiPaywallActivity>? = null
+
         internal fun setStaticCallbacks(
             onClose: (() -> Unit)?,
             onPurchase: ((com.monetai.sdk.models.PaywallContext, (() -> Unit)) -> Unit)?,
@@ -53,6 +57,13 @@ class MonetaiPaywallActivity : AppCompatActivity() {
             staticOnPurchase = java.lang.ref.WeakReference(onPurchase)
             staticOnTermsOfService = java.lang.ref.WeakReference(onTermsOfService)
             staticOnPrivacyPolicy = java.lang.ref.WeakReference(onPrivacyPolicy)
+        }
+
+        internal fun getCurrentActivity(): MonetaiPaywallActivity? = currentInstance?.get()
+
+        internal fun dismissCurrent() {
+            currentInstance?.get()?.finish()
+            currentInstance = null
         }
     }
     
@@ -69,9 +80,6 @@ class MonetaiPaywallActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var rootView: FrameLayout
     
-    private var isLoaded = false
-    private var hasWebViewError = false
-    
     // MARK: - Lifecycle
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +94,9 @@ class MonetaiPaywallActivity : AppCompatActivity() {
         onPurchase = staticOnPurchase?.get()
         onTermsOfService = staticOnTermsOfService?.get()
         onPrivacyPolicy = staticOnPrivacyPolicy?.get()
+
+        // Track this instance for programmatic dismiss
+        currentInstance = java.lang.ref.WeakReference(this)
         
         setupUI()
         loadPaywall()
@@ -94,7 +105,8 @@ class MonetaiPaywallActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         
-        // Clean up static callbacks to prevent memory leaks
+        // Clean up static references to prevent memory leaks
+        currentInstance = null
         staticOnClose = null
         staticOnPurchase = null
         staticOnTermsOfService = null
@@ -228,13 +240,11 @@ class MonetaiPaywallActivity : AppCompatActivity() {
         return object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                isLoaded = false
                 progressBar.visibility = View.VISIBLE
             }
             
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                isLoaded = true
                 progressBar.visibility = View.GONE
                 
                 // Show WebView immediately after loading (no animation for snappy response)
@@ -249,8 +259,6 @@ class MonetaiPaywallActivity : AppCompatActivity() {
             ) {
                 super.onReceivedError(view, errorCode, description, failingUrl)
                 Log.e(TAG, "WebView error: $errorCode - $description")
-                isLoaded = true
-                hasWebViewError = true
                 showError()
             }
             
@@ -261,8 +269,6 @@ class MonetaiPaywallActivity : AppCompatActivity() {
             ) {
                 super.onReceivedHttpError(view, request, errorResponse)
                 Log.e(TAG, "WebView HTTP error: ${errorResponse?.statusCode}")
-                isLoaded = true
-                hasWebViewError = true
                 showError()
             }
         }
@@ -449,19 +455,4 @@ class MonetaiPaywallActivity : AppCompatActivity() {
         }
     }
     
-    // MARK: - Public Methods
-    
-    fun setCallbacks(
-        onClose: (() -> Unit)? = null,
-        onPurchase: ((com.monetai.sdk.models.PaywallContext, (() -> Unit)) -> Unit)? = null,
-        onTermsOfService: ((com.monetai.sdk.models.PaywallContext) -> Unit)? = null,
-        onPrivacyPolicy: ((com.monetai.sdk.models.PaywallContext) -> Unit)? = null
-    ) {
-        
-        this.onClose = onClose
-        this.onPurchase = onPurchase
-        this.onTermsOfService = onTermsOfService
-        this.onPrivacyPolicy = onPrivacyPolicy
-        
-    }
 }

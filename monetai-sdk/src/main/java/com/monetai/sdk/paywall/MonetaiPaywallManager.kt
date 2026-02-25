@@ -31,7 +31,6 @@ class MonetaiPaywallManager {
     // MARK: - Private Properties
     private var paywallConfig: PaywallConfig? = null
     private var discountInfo: DiscountInfo? = null
-    private var currentPaywallActivity: MonetaiPaywallActivity? = null
 
     // MARK: - Public Methods
 
@@ -152,24 +151,13 @@ class MonetaiPaywallManager {
         }
 
         // Avoid double-present
-        if (currentPaywallActivity != null) {
+        if (MonetaiPaywallActivity.getCurrentActivity() != null) {
             Log.w(TAG, "Paywall already presented")
             return
         }
 
-        // Create PaywallActivity
-        val paywallActivity = MonetaiPaywallActivity()
-
-        // Set static callbacks
+        // Set static callbacks (read by the Activity in onCreate)
         MonetaiPaywallActivity.setStaticCallbacks(
-            onClose = { hidePaywall() },
-            onPurchase = { paywallContext, closePaywall -> handlePurchase(paywallContext, closePaywall) },
-            onTermsOfService = { paywallContext -> handleTermsOfService(paywallContext) },
-            onPrivacyPolicy = { paywallContext -> handlePrivacyPolicy(paywallContext) }
-        )
-
-        // Also set instance callbacks
-        paywallActivity.setCallbacks(
             onClose = { hidePaywall() },
             onPurchase = { paywallContext, closePaywall -> handlePurchase(paywallContext, closePaywall) },
             onTermsOfService = { paywallContext -> handleTermsOfService(paywallContext) },
@@ -185,14 +173,10 @@ class MonetaiPaywallManager {
             topActivity.startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start activity", e)
-            return
         }
-
-        currentPaywallActivity = paywallActivity
     }
 
     private fun dismissPaywall() {
-        currentPaywallActivity?.finish()
-        currentPaywallActivity = null
+        MonetaiPaywallActivity.dismissCurrent()
     }
 }

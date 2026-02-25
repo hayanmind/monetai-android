@@ -2,9 +2,6 @@ package com.monetai.sdk.network
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -15,18 +12,6 @@ import okhttp3.ResponseBody
 import retrofit2.Converter
 import java.lang.reflect.Type
 import com.monetai.sdk.SDKVersion
-import com.monetai.sdk.utils.DateTimeHelper
-import java.util.Date
-
-/**
- * Custom date deserializer for ISO 8601 format with timezone support
- * Uses DateTimeHelper for consistent ISO 8601 parsing
- */
-class TimezoneDateDeserializer : JsonDeserializer<Date> {
-    override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): Date? {
-        return DateTimeHelper.parseISO8601(json?.asString)
-    }
-}
 
 /**
  * Custom converter that handles empty response bodies.
@@ -81,7 +66,6 @@ object ApiClient {
     internal val sdkHeaderInterceptor = SDKHeaderInterceptor()
 
     private val gson: Gson = GsonBuilder()
-        .registerTypeAdapter(java.util.Date::class.java, TimezoneDateDeserializer())
         .create()
 
     private val okHttpClient = OkHttpClient.Builder()

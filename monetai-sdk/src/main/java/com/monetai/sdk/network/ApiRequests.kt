@@ -54,20 +54,16 @@ object ApiRequests {
         params: Map<String, Any>? = null,
         createdAt: String
     ) {
-        try {
-            val request = CreateEventRequest(
-                sdkKey = sdkKey,
-                userId = userId,
-                eventName = eventName,
-                params = params,
-                createdAt = createdAt,
-                platform = "android"
-            )
+        val request = CreateEventRequest(
+            sdkKey = sdkKey,
+            userId = userId,
+            eventName = eventName,
+            params = params,
+            createdAt = createdAt,
+            platform = "android"
+        )
 
-            ApiClient.apiService.createEvent(request)
-        } catch (e: Exception) {
-            throw e
-        }
+        ApiClient.apiService.createEvent(request)
     }
 
     /**
@@ -117,24 +113,20 @@ object ApiRequests {
         params: ViewProductItemParams,
         createdAt: String
     ) {
-        try {
-            val request = ViewProductItemRequest(
-                sdkKey = sdkKey,
-                userId = userId,
-                productId = params.productId,
-                price = params.price,
-                regularPrice = params.regularPrice,
-                currencyCode = params.currencyCode,
-                promotionId = params.promotionId,
-                month = params.month,
-                createdAt = createdAt,
-                platform = "android"
-            )
+        val request = ViewProductItemRequest(
+            sdkKey = sdkKey,
+            userId = userId,
+            productId = params.productId,
+            price = params.price,
+            regularPrice = params.regularPrice,
+            currencyCode = params.currencyCode,
+            promotionId = params.promotionId,
+            month = params.month,
+            createdAt = createdAt,
+            platform = "android"
+        )
 
-            ApiClient.apiService.logViewProductItem(request)
-        } catch (e: Exception) {
-            throw e
-        }
+        ApiClient.apiService.logViewProductItem(request)
     }
 
     /**
@@ -146,18 +138,14 @@ object ApiRequests {
         sdkKey: String,
         userId: String
     ) {
-        try {
-            val request = TransactionMappingRequest(
-                purchaseToken = purchaseToken,
-                packageName = packageName,
-                userId = userId,
-                sdkKey = sdkKey
-            )
+        val request = TransactionMappingRequest(
+            purchaseToken = purchaseToken,
+            packageName = packageName,
+            userId = userId,
+            sdkKey = sdkKey
+        )
 
-            ApiClient.apiService.mapTransactionToUser(request)
-        } catch (e: Exception) {
-            throw e
-        }
+        ApiClient.apiService.mapTransactionToUser(request)
     }
 
     /**
@@ -169,17 +157,13 @@ object ApiRequests {
         sdkKey: String,
         userId: String
     ) {
-        try {
-            val request = PurchaseHistoryRequest(
-                packageName = packageName,
-                userId = userId,
-                sdkKey = sdkKey,
-                purchases = purchases
-            )
+        val request = PurchaseHistoryRequest(
+            packageName = packageName,
+            userId = userId,
+            sdkKey = sdkKey,
+            purchases = purchases
+        )
 
-            ApiClient.apiService.sendPurchaseHistory(request)
-        } catch (e: Exception) {
-            throw e
-        }
+        ApiClient.apiService.sendPurchaseHistory(request)
     }
 }
