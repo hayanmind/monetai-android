@@ -72,16 +72,16 @@ data class GetOfferRequest(
 )
 
 data class GetOfferResponse(
-    val agent_id: Int,
-    val agent_name: String,
+    val agentId: Int,
+    val agentName: String,
     val products: List<OfferProductResponse>
 )
 
 data class OfferProductResponse(
     val name: String,
     val sku: String,
-    val discount_rate: Double,
-    val is_manual: Boolean
+    val discountRate: Double,
+    val isManual: Boolean
 )
 
 // View Product Item API request model

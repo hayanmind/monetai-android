@@ -85,14 +85,14 @@ object ApiRequests {
             val response = ApiClient.apiService.getOffer(request)
 
             Offer(
-                agentId = response.agent_id,
-                agentName = response.agent_name,
+                agentId = response.agentId,
+                agentName = response.agentName,
                 products = response.products.map { product ->
                     OfferProduct(
                         name = product.name,
                         sku = product.sku,
-                        discountRate = product.discount_rate,
-                        isManual = product.is_manual
+                        discountRate = product.discountRate,
+                        isManual = product.isManual
                     )
                 }
             )

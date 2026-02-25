@@ -10,8 +10,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:spacing="20dp">
+        android:orientation="vertical">
 
         <!-- Header Section -->
         <androidx.cardview.widget.CardView
@@ -31,7 +30,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:text="Monetai Example App"
+                    android:text="Monetai Example App (Java)"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -91,8 +90,6 @@
             </LinearLayout>
 
         </androidx.cardview.widget.CardView>
-
-
 
         <!-- Available Products Section -->
         <androidx.cardview.widget.CardView
@@ -236,7 +233,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="💰 Discount Information"
+                    android:text="Discount Information"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -472,7 +469,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="🔧 Initialized: ❌ NO"
+                        android:text="Initialized: NO"
                         android:textSize="12sp" />
 
                     <TextView
@@ -480,7 +477,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="🔑 SDK Key: f835dc24-91af..."
+                        android:text="SDK Key: ..."
                         android:textSize="12sp" />
 
                     <TextView
@@ -488,16 +485,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="👤 User ID: example-user-id-kotlin-purchase"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/textViewStoreKit"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="🛒 StoreKit: Version 2"
-                        android:textColor="@android:color/holo_blue_dark"
+                        android:text="User ID: ..."
                         android:textSize="12sp" />
 
                     <TextView
@@ -505,7 +493,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="📱 Platform: Android Native"
+                        android:text="Platform: Android Native (Java)"
                         android:textSize="12sp" />
 
                     <TextView
@@ -513,7 +501,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="🌐 Server: 🔴 Disconnected"
+                        android:text="Server: Disconnected"
                         android:textSize="12sp" />
 
                 </LinearLayout>
@@ -524,4 +512,4 @@
 
     </LinearLayout>
 
-</ScrollView> 
+</ScrollView>
