@@ -22,13 +22,10 @@ data class PaywallConfig @JvmOverloads constructor(
     val locale: String,                 // Language setting
     val style: PaywallStyle,            // Paywall style
     val features: List<Feature> = emptyList(), // Feature list
-    val enabled: Boolean = true,        // Whether paywall is enabled
     val bannerBottom: Float = 20f,     // Banner bottom margin
-    val isSubscriber: Boolean = false,  // Whether user is subscriber
-    
-    
+
     // Context Injection Pattern - callbacks receive context for UI operations
     val onPurchase: ((PaywallContext, (() -> Unit)) -> Unit)? = null,      // Purchase handling with context
-    val onTermsOfService: ((PaywallContext) -> Unit)? = null,              // Terms of service with context  
+    val onTermsOfService: ((PaywallContext) -> Unit)? = null,              // Terms of service with context
     val onPrivacyPolicy: ((PaywallContext) -> Unit)? = null               // Privacy policy with context
 )
