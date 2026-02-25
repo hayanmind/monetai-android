@@ -1,6 +1,6 @@
-# Sample Kotlin Purchase App
+# Sample Java Purchase App
 
-A Kotlin sample app demonstrating Monetai SDK integration with dynamic pricing and RevenueCat for in-app purchases.
+A Java sample app demonstrating Monetai SDK integration with dynamic pricing and RevenueCat for in-app purchases.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ A Kotlin sample app demonstrating Monetai SDK integration with dynamic pricing a
 ## Running the App
 
 1. Open the project in Android Studio
-2. Set your SDK key, user ID, and RevenueCat API key in `Constants.kt`
+2. Set your SDK key, user ID, and RevenueCat API key in `Constants.java`
 3. Sync the project with Gradle files
 4. Run the app on an emulator or physical device
 
@@ -19,10 +19,10 @@ A Kotlin sample app demonstrating Monetai SDK integration with dynamic pricing a
 
 ```bash
 # Build the app
-./gradlew :examples:sample-kotlin-purchase:assembleDebug
+./gradlew :examples:sample-java-purchase:assembleDebug
 
 # Install the app
-./gradlew :examples:sample-kotlin-purchase:installDebug
+./gradlew :examples:sample-java-purchase:installDebug
 ```
 
 ## Features
@@ -32,4 +32,4 @@ A Kotlin sample app demonstrating Monetai SDK integration with dynamic pricing a
 - Product list with discount badge display
 - Event tracking (`logEvent`, `logViewProductItem`)
 - Entitlement status display
-- Kotlin coroutines for async operations
+- Java implementation using `MonetaiSDKJava` wrapper

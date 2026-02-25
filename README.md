@@ -8,11 +8,11 @@ AI-powered Android SDK to discover hidden app revenue from non-paying users.
 
 ## Features
 
-- 🤖 **AI User Prediction**: Predict purchase likelihood using machine learning
-- 📊 **Real-time Analytics**: Track user behavior and engagement
-- 🎯 **A/B Testing**: Built-in support for conversion optimization
-- 💰 **Smart Discounts**: Automatic discount creation and management
+- 💰 **Dynamic Pricing**: AI-powered offer and discount optimization per user
+- 📊 **Event Tracking**: Track user behavior and product views
 - 🛒 **Google Play Billing**: Full support for Google Play Billing Library
+- 🎨 **Paywall & Banner UI**: Built-in customizable paywall and banner components
+- ☕ **Java & Kotlin**: Native support for both languages
 
 ## Getting Started
 
