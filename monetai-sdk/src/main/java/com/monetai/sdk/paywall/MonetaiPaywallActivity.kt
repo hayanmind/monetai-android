@@ -33,15 +33,16 @@ class MonetaiPaywallActivity : AppCompatActivity() {
         private const val MESSAGE_KEY_TERMS_OF_SERVICE = "CLICK_TERMS_OF_SERVICE"
         private const val MESSAGE_KEY_PRIVACY_POLICY = "CLICK_PRIVACY_POLICY"
         
-        // Static callback holder for Activity instances using WeakReference to prevent memory leaks
+        // Static callback holder for Activity instances
+        // Note: Using strong references here is safe because onDestroy() nulls them out
         @Volatile
-        private var staticOnClose: java.lang.ref.WeakReference<(() -> Unit)?>? = null
+        private var staticOnClose: (() -> Unit)? = null
         @Volatile
-        private var staticOnPurchase: java.lang.ref.WeakReference<((com.monetai.sdk.models.PaywallContext, (() -> Unit)) -> Unit)?>? = null
+        private var staticOnPurchase: ((com.monetai.sdk.models.PaywallContext, (() -> Unit)) -> Unit)? = null
         @Volatile
-        private var staticOnTermsOfService: java.lang.ref.WeakReference<((com.monetai.sdk.models.PaywallContext) -> Unit)?>? = null
+        private var staticOnTermsOfService: ((com.monetai.sdk.models.PaywallContext) -> Unit)? = null
         @Volatile
-        private var staticOnPrivacyPolicy: java.lang.ref.WeakReference<((com.monetai.sdk.models.PaywallContext) -> Unit)?>? = null
+        private var staticOnPrivacyPolicy: ((com.monetai.sdk.models.PaywallContext) -> Unit)? = null
 
         // Track the current running Activity instance for programmatic dismiss
         @Volatile
@@ -53,10 +54,10 @@ class MonetaiPaywallActivity : AppCompatActivity() {
             onTermsOfService: ((com.monetai.sdk.models.PaywallContext) -> Unit)?,
             onPrivacyPolicy: ((com.monetai.sdk.models.PaywallContext) -> Unit)?
         ) {
-            staticOnClose = java.lang.ref.WeakReference(onClose)
-            staticOnPurchase = java.lang.ref.WeakReference(onPurchase)
-            staticOnTermsOfService = java.lang.ref.WeakReference(onTermsOfService)
-            staticOnPrivacyPolicy = java.lang.ref.WeakReference(onPrivacyPolicy)
+            staticOnClose = onClose
+            staticOnPurchase = onPurchase
+            staticOnTermsOfService = onTermsOfService
+            staticOnPrivacyPolicy = onPrivacyPolicy
         }
 
         internal fun getCurrentActivity(): MonetaiPaywallActivity? = currentInstance?.get()
@@ -90,10 +91,10 @@ class MonetaiPaywallActivity : AppCompatActivity() {
             ?: throw IllegalArgumentException("PaywallParams is required")
         
         // Get static callbacks
-        onClose = staticOnClose?.get()
-        onPurchase = staticOnPurchase?.get()
-        onTermsOfService = staticOnTermsOfService?.get()
-        onPrivacyPolicy = staticOnPrivacyPolicy?.get()
+        onClose = staticOnClose
+        onPurchase = staticOnPurchase
+        onTermsOfService = staticOnTermsOfService
+        onPrivacyPolicy = staticOnPrivacyPolicy
 
         // Track this instance for programmatic dismiss
         currentInstance = java.lang.ref.WeakReference(this)

@@ -97,7 +97,7 @@ class MonetaiSDK private constructor() {
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
-                    this@MonetaiSDK.applicationContext = context
+                    this@MonetaiSDK.applicationContext = context.applicationContext
 
                     // Start billing observation (BillingClient requires main thread)
                     billingManager = BillingManager(context, sdkKey, userId)
