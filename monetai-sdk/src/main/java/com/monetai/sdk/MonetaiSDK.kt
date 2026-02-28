@@ -42,8 +42,6 @@ class MonetaiSDK private constructor() {
     private var serverTimeOffset: Long = 0L
     private val pendingEvents = ConcurrentLinkedQueue<PendingEvent>()
 
-    // Application context for UI components
-    private var applicationContext: Context? = null
     // Billing components
     private var billingManager: BillingManager? = null
     private var receiptValidator: ReceiptValidator? = null
@@ -89,10 +87,8 @@ class MonetaiSDK private constructor() {
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
-                    this@MonetaiSDK.applicationContext = context.applicationContext
-
                     // Start billing observation (BillingClient requires main thread)
-                    billingManager = BillingManager(context, sdkKey, userId)
+                    billingManager = BillingManager(context, sdkKey, userId, internalScope)
                     billingManager?.startObserving()
                 }
 
@@ -109,7 +105,7 @@ class MonetaiSDK private constructor() {
                 // Send receipt asynchronously in background (does not block initialization)
                 launch {
                     try {
-                        receiptValidator = ReceiptValidator(context, sdkKey, userId)
+                        receiptValidator = ReceiptValidator(context, sdkKey, userId, internalScope)
                         receiptValidator?.sendReceipt()
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to send receipt", e)
@@ -279,11 +275,6 @@ class MonetaiSDK private constructor() {
      * Return SDK initialization status
      */
     fun getInitialized(): Boolean = isInitialized
-
-    /**
-     * Get application context
-     */
-    fun getApplicationContext(): Context? = applicationContext
 
     // MARK: - Private Methods
 
