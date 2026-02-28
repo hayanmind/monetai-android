@@ -2,17 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.monetai.sdk">
 
-    <!-- Internet permission for WebView -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <application>
-        <!-- Paywall Activity -->
-        <activity
-            android:name=".paywall.MonetaiPaywallActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.Translucent"
-            android:windowSoftInputMode="adjustResize" />
-    </application>
 
 </manifest>

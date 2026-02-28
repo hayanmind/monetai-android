@@ -11,7 +11,6 @@ AI-powered Android SDK to discover hidden app revenue from non-paying users.
 - 💰 **Dynamic Pricing**: AI-powered offer and discount optimization per user
 - 📊 **Event Tracking**: Track user behavior and product views
 - 🛒 **Google Play Billing**: Full support for Google Play Billing Library
-- 🎨 **Paywall & Banner UI**: Built-in customizable paywall and banner components
 - ☕ **Java & Kotlin**: Native support for both languages
 
 ## Getting Started

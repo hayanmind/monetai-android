@@ -70,37 +70,32 @@ object ApiRequests {
      * Get offer for a promotion
      */
     suspend fun getOffer(sdkKey: String, userId: String, promotionId: Int): Offer? {
-        return try {
-            val request = GetOfferRequest(
-                sdkKey = sdkKey,
-                userId = userId,
-                promotionId = promotionId,
-                platform = "android"
+        val request = GetOfferRequest(
+            sdkKey = sdkKey,
+            userId = userId,
+            promotionId = promotionId,
+            platform = "android"
+        )
+
+        val response = ApiClient.apiService.getOffer(request)
+
+        if (!response.isSuccessful) {
+            throw retrofit2.HttpException(response)
+        }
+
+        return response.body()?.let { body ->
+            Offer(
+                agentId = body.agentId,
+                agentName = body.agentName,
+                products = body.products.map { product ->
+                    OfferProduct(
+                        name = product.name,
+                        sku = product.sku,
+                        discountRate = product.discountRate,
+                        isManual = product.isManual
+                    )
+                }
             )
-
-            val response = ApiClient.apiService.getOffer(request)
-
-            if (!response.isSuccessful) {
-                throw retrofit2.HttpException(response)
-            }
-
-            response.body()?.let { body ->
-                Offer(
-                    agentId = body.agentId,
-                    agentName = body.agentName,
-                    products = body.products.map { product ->
-                        OfferProduct(
-                            name = product.name,
-                            sku = product.sku,
-                            discountRate = product.discountRate,
-                            isManual = product.isManual
-                        )
-                    }
-                )
-            }
-        } catch (e: Exception) {
-            Log.e("ApiRequests", "Failed to get offer", e)
-            null
         }
     }
 
