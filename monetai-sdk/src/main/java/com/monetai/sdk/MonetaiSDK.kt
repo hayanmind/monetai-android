@@ -7,8 +7,6 @@ import com.monetai.sdk.billing.ReceiptValidator
 import com.monetai.sdk.models.*
 import com.monetai.sdk.network.ApiClient
 import com.monetai.sdk.network.ApiRequests
-import com.monetai.sdk.paywall.MonetaiPaywallManager
-import com.monetai.sdk.banner.MonetaiBannerManager
 import com.monetai.sdk.utils.DateTimeHelper
 import kotlinx.coroutines.*
 import java.util.*
@@ -49,12 +47,6 @@ class MonetaiSDK private constructor() {
     // Billing components
     private var billingManager: BillingManager? = null
     private var receiptValidator: ReceiptValidator? = null
-
-    // Paywall and Banner components
-    internal val paywallManager = MonetaiPaywallManager()
-    internal val bannerManager: MonetaiBannerManager by lazy {
-        MonetaiBannerManager(applicationContext ?: throw IllegalStateException("SDK not initialized. Call initialize() first."))
-    }
 
     // Coroutine scope for internal operations
     private val internalScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
