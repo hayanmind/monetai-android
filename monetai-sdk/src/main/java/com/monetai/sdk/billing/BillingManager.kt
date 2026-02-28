@@ -3,18 +3,11 @@ package com.monetai.sdk.billing
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
-import com.monetai.sdk.MonetaiSDK
 import com.monetai.sdk.network.ApiRequests
 import com.monetai.sdk.network.PurchaseItem
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CompletableDeferred
-import org.json.JSONObject
-import org.json.JSONArray
-import java.net.HttpURLConnection
-import java.net.URL
 
 // MARK: - Receipt Validator
 /**
@@ -23,38 +16,29 @@ import java.net.URL
 class ReceiptValidator(
     private val context: Context,
     private val sdkKey: String,
-    private val userId: String
+    private val userId: String,
+    private val scope: CoroutineScope
 ) {
     companion object {
         private const val TAG = "ReceiptValidator"
-        private const val RECEIPT_VALIDATION_URL = "https://monetai-api-414410537412.us-central1.run.app/sdk/transaction-id-to-user-id/android/receipt"
     }
-    
+
     /**
      * Send receipt
      */
     suspend fun sendReceipt() {
-        Log.d(TAG, "[Debug] sendReceipt started")
-        
         val packageName = context.packageName
-        
-        Log.d(TAG, "[Debug] Credentials check completed")
-        
-        Log.d(TAG, "[Debug] calling queryAndSyncActivePurchases")
         queryAndSyncActivePurchases(userId, packageName, sdkKey)
     }
-    
+
     /**
      * Query and sync active purchases
      */
     private suspend fun queryAndSyncActivePurchases(userId: String, packageName: String, sdkKey: String) {
-        Log.d(TAG, "[Debug] queryAndSyncActivePurchases started")
-        
         val deferred = CompletableDeferred<Unit>()
-        
+
         val billingClient = BillingClient.newBuilder(context)
             .setListener { billingResult, _ ->
-                // Dummy listener for purchase history query
                 Log.d(TAG, "[Debug] dummy listener called: ${billingResult.responseCode}")
             }
             .enablePendingPurchases(
@@ -63,52 +47,44 @@ class ReceiptValidator(
                     .build()
             )
             .build()
-            
+
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
-                Log.d(TAG, "[Debug] onBillingSetupFinished: ${billingResult.responseCode}")
-                
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                    Log.d(TAG, "[Debug] starting in-app purchase query")
-                    // Query in-app active purchases
-                        
                     billingClient.queryPurchasesAsync(
                         QueryPurchasesParams.newBuilder()
                             .setProductType(BillingClient.ProductType.INAPP)
                             .build()
-                    ) { result1, inappPurchases ->
-                        Log.d(TAG, "[Debug] in-app purchase query completed: ${result1.responseCode}, count: ${inappPurchases.size}")
-
-                        // Query subscription purchases
-                        Log.d(TAG, "[Debug] starting subscription query")
+                    ) { _, inappPurchases ->
                         billingClient.queryPurchasesAsync(
                             QueryPurchasesParams.newBuilder()
                                 .setProductType(BillingClient.ProductType.SUBS)
                                 .build()
-                        ) { result2, subsPurchases ->
-                            try {
-                                Log.d(TAG, "[Debug] subscription query completed: ${result2.responseCode}, count: ${subsPurchases.size}")
+                        ) { _, subsPurchases ->
+                            val allPurchases = inappPurchases + subsPurchases
 
-                                val allPurchases = inappPurchases + subsPurchases
-                                
-                                // Add debugging logs
-                                Log.d(TAG, "[Debug] total active purchases count: ${allPurchases.size}")
-                                Log.d(TAG, "[Debug] in-app purchase count: ${inappPurchases.size}")
-                                Log.d(TAG, "[Debug] subscription purchase count: ${subsPurchases.size}")
-                                
-                                if (allPurchases.isNotEmpty()) {
-                                    sendActivePurchasesToServer(userId, packageName, sdkKey, allPurchases)
-                                    Log.d(TAG, "[Debug] active purchases server transmission completed")
-                                } else {
-                                    Log.d(TAG, "[Debug] no active purchases found")
+                            if (allPurchases.isNotEmpty()) {
+                                scope.launch {
+                                    try {
+                                        val purchaseItems = allPurchases.map { PurchaseItem(purchaseToken = it.purchaseToken) }
+                                        ApiRequests.sendPurchaseHistory(
+                                            purchases = purchaseItems,
+                                            packageName = packageName,
+                                            sdkKey = sdkKey,
+                                            userId = userId
+                                        )
+                                        Log.d(TAG, "[Debug] active purchases server transmission completed")
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "[Error] active purchases sync failed: ${e.message}")
+                                    } finally {
+                                        billingClient.endConnection()
+                                        deferred.complete(Unit)
+                                    }
                                 }
-                                
+                            } else {
+                                Log.d(TAG, "[Debug] no active purchases found")
                                 billingClient.endConnection()
                                 deferred.complete(Unit)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "[Error] error during active purchases processing: ${e.message}")
-                                billingClient.endConnection()
-                                deferred.completeExceptionally(e)
                             }
                         }
                     }
@@ -118,7 +94,7 @@ class ReceiptValidator(
                     deferred.completeExceptionally(Exception("Billing setup failed: ${billingResult.debugMessage}"))
                 }
             }
-            
+
             override fun onBillingServiceDisconnected() {
                 Log.d(TAG, "[Debug] Billing service disconnected")
                 if (!deferred.isCompleted) {
@@ -126,78 +102,32 @@ class ReceiptValidator(
                 }
             }
         })
-        
-        // Wait for callback to complete
+
         deferred.await()
-    }
-    
-    /**
-     * Send active purchases to server
-     */
-    private fun sendActivePurchasesToServer(
-        userId: String,
-        packageName: String,
-        sdkKey: String,
-        purchases: List<Purchase>
-    ) {
-        val purchasesList = purchases.map { purchase ->
-            JSONObject().apply {
-                put("purchaseToken", purchase.purchaseToken)
-            }
-        }
-        
-        val payload = JSONObject().apply {
-            put("packageName", packageName)
-            put("userId", userId)
-            put("sdkKey", sdkKey)
-            put("purchases", JSONArray(purchasesList))
-        }
-        
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val url = URL(RECEIPT_VALIDATION_URL)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.doOutput = true
-                
-                connection.outputStream.use { os ->
-                    os.write(payload.toString().toByteArray())
-                }
-                
-                val responseCode = connection.responseCode
-                Log.d(TAG, "[Debug] active purchases sync response: $responseCode")
-            } catch (e: Exception) {
-                Log.e(TAG, "[Error] active purchases sync failed: ${e.message}")
-            }
-        }
     }
 }
 
 /**
  * Billing manager for handling in-app purchases and subscriptions
- * Updated for Google Play Billing Library 7.0.0
  */
 class BillingManager(
     private val context: Context,
     private val sdkKey: String,
-    private val userId: String
-) : 
+    private val userId: String,
+    private val scope: CoroutineScope
+) :
     PurchasesUpdatedListener, BillingClientStateListener {
-    
+
     companion object {
         private const val TAG = "BillingManager"
-        private const val MAPPING_URL = "https://monetai-api-414410537412.us-central1.run.app/sdk/transaction-id-to-user-id/android"
     }
-    
+
     private var billingClient: BillingClient? = null
 
     /**
      * Start purchase observation
      */
     fun startObserving() {
-        Log.d(TAG, "[Debug] BillingManager startObserving")
-        
         billingClient = BillingClient.newBuilder(context)
             .setListener(this)
             .enablePendingPurchases(
@@ -206,10 +136,10 @@ class BillingManager(
                     .build()
             )
             .build()
-            
+
         billingClient?.startConnection(this)
     }
-    
+
     /**
      * Stop purchase observation
      */
@@ -217,24 +147,20 @@ class BillingManager(
         billingClient?.endConnection()
         billingClient = null
     }
-    
+
     override fun onBillingSetupFinished(billingResult: BillingResult) {
-        Log.d(TAG, "[Debug] onBillingSetupFinished: ${billingResult.responseCode}")
-        
         if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
             Log.d(TAG, "[Debug] Billing client ready - waiting for new purchases")
         } else {
             Log.e(TAG, "[Error] Billing setup failed: ${billingResult.debugMessage}")
         }
     }
-    
+
     override fun onBillingServiceDisconnected() {
         Log.d(TAG, "[Debug] onBillingServiceDisconnected")
     }
-    
+
     override fun onPurchasesUpdated(billingResult: BillingResult, purchases: MutableList<Purchase>?) {
-        Log.d(TAG, "[Debug] onPurchasesUpdated: ${billingResult.responseCode}, count: ${purchases?.size ?: 0}")
-        
         if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
             for (purchase in purchases) {
                 handlePurchase(purchase)
@@ -243,54 +169,34 @@ class BillingManager(
             Log.e(TAG, "[Error] Purchase update failed: ${billingResult.debugMessage}")
         }
     }
-    
+
     /**
      * Handle purchase
      */
     private fun handlePurchase(purchase: Purchase) {
-        val purchaseToken = purchase.purchaseToken
-        
-        Log.d(TAG, "[Debug] handlePurchase: purchaseToken=$purchaseToken, state=${purchase.purchaseState}")
-        
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-            sendMapping(purchaseToken)
+            sendMapping(purchase.purchaseToken)
         }
     }
-    
+
     /**
      * Send purchase mapping
      */
     private fun sendMapping(purchaseToken: String) {
-        Log.d(TAG, "[Debug] sendMapping: $purchaseToken")
-        
         val packageName = context.packageName
-        
-        val payload = JSONObject().apply {
-            put("purchaseToken", purchaseToken)
-            put("packageName", packageName)
-            put("userId", userId)
-            put("sdkKey", sdkKey)
-        }
-        
-        Log.d(TAG, "[Debug] Sending purchase mapping to server")
-        
-        CoroutineScope(Dispatchers.IO).launch {
+
+        scope.launch {
             try {
-                val url = URL(MAPPING_URL)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.doOutput = true
-                
-                connection.outputStream.use { os ->
-                    os.write(payload.toString().toByteArray())
-                }
-                
-                val responseCode = connection.responseCode
-                Log.d(TAG, "[Debug] Mapping POST succeeded: $responseCode")
+                ApiRequests.mapTransactionToUser(
+                    purchaseToken = purchaseToken,
+                    packageName = packageName,
+                    sdkKey = sdkKey,
+                    userId = userId
+                )
+                Log.d(TAG, "[Debug] Mapping POST succeeded")
             } catch (e: Exception) {
                 Log.e(TAG, "[Error] Mapping POST failed: ${e.message}")
             }
         }
     }
-} 
+}

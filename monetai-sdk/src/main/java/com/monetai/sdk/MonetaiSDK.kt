@@ -92,7 +92,7 @@ class MonetaiSDK private constructor() {
                     this@MonetaiSDK.applicationContext = context.applicationContext
 
                     // Start billing observation (BillingClient requires main thread)
-                    billingManager = BillingManager(context, sdkKey, userId)
+                    billingManager = BillingManager(context, sdkKey, userId, internalScope)
                     billingManager?.startObserving()
                 }
 
@@ -109,7 +109,7 @@ class MonetaiSDK private constructor() {
                 // Send receipt asynchronously in background (does not block initialization)
                 launch {
                     try {
-                        receiptValidator = ReceiptValidator(context, sdkKey, userId)
+                        receiptValidator = ReceiptValidator(context, sdkKey, userId, internalScope)
                         receiptValidator?.sendReceipt()
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to send receipt", e)
