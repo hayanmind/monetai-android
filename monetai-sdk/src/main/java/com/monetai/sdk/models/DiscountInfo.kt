@@ -3,11 +3,10 @@ package com.monetai.sdk.models
 import java.util.Date
 
 /**
- * Discount information
+ * Discount information for banner/paywall display timing
  */
 data class DiscountInfo(
-    val startedAt: Date,                // Start date
-    val endedAt: Date,                   // End date
-    val userId: String,                  // User ID
-    val sdkKey: String                   // SDK key
+    val endedAt: Date,
+    val userId: String,
+    val sdkKey: String
 )
