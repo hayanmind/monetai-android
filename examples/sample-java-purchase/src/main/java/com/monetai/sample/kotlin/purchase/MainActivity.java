@@ -355,11 +355,11 @@ public class MainActivity extends AppCompatActivity {
             if (matchedPkg != null) {
                 monetaiSDK.logViewProductItem(
                         new ViewProductItemParams(
+                                Constants.PLACEMENT,
                                 matchedPkg.getProduct().getId(),
                                 matchedPkg.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 basePackage.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 matchedPkg.getProduct().getPrice().getCurrencyCode(),
-                                Constants.PLACEMENT,
                                 null
                         )
                 );
