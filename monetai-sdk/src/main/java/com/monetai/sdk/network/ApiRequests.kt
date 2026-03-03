@@ -69,11 +69,11 @@ object ApiRequests {
     /**
      * Get offer for a promotion
      */
-    suspend fun getOffer(sdkKey: String, userId: String, promotionId: Int): Offer? {
+    suspend fun getOffer(sdkKey: String, userId: String, placement: String): Offer? {
         val request = GetOfferRequest(
             sdkKey = sdkKey,
             userId = userId,
-            promotionId = promotionId,
+            placement = placement,
             platform = "android"
         )
 
@@ -116,7 +116,6 @@ object ApiRequests {
             regularPrice = params.regularPrice,
             currencyCode = params.currencyCode,
             placement = params.placement,
-            promotionId = params.promotionId,
             month = params.month,
             createdAt = createdAt,
             platform = "android"

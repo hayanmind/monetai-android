@@ -7,7 +7,7 @@ object Constants {
     // MARK: - MonetaiSDK Configuration
     const val SDK_KEY = "your-sdk-key-here"
     const val USER_ID = "example-user-id-kotlin-purchase"
-    const val PROMOTION_ID = 6
+    const val PLACEMENT = "your-placement-here"
     const val DEFAULT_PRODUCT_ID = "your-default-product-id-here"
 
     // MARK: - RevenueCat Configuration

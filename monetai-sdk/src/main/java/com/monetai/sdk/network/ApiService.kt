@@ -68,7 +68,7 @@ data class CreateEventRequest(
 data class GetOfferRequest(
     val sdkKey: String,
     val userId: String,
-    val promotionId: Int,
+    val placement: String,
     val platform: String = "android"
 )
 
@@ -94,7 +94,6 @@ data class ViewProductItemRequest(
     val regularPrice: Double,
     val currencyCode: String,
     val placement: String,
-    val promotionId: Int?,
     val month: Int?,
     val createdAt: String,
     val platform: String = "android"
