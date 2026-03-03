@@ -359,6 +359,7 @@ public class MainActivity extends AppCompatActivity {
                                 matchedPkg.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 basePackage.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 matchedPkg.getProduct().getPrice().getCurrencyCode(),
+                                "promotion",
                                 Constants.PROMOTION_ID,
                                 null
                         )

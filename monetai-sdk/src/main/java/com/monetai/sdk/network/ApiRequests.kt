@@ -115,8 +115,8 @@ object ApiRequests {
             price = params.price,
             regularPrice = params.regularPrice,
             currencyCode = params.currencyCode,
+            placement = params.placement,
             promotionId = params.promotionId,
-            source = params.source,
             month = params.month,
             createdAt = createdAt,
             platform = "android"

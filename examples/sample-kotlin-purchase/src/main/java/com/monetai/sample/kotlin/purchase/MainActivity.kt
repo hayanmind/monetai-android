@@ -332,7 +332,8 @@ class MainActivity : AppCompatActivity() {
                         price = pkg.product.price.amountMicros / 1_000_000.0,
                         regularPrice = basePackage.product.price.amountMicros / 1_000_000.0,
                         currencyCode = pkg.product.price.currencyCode,
-                        promotionId = Constants.PROMOTION_ID
+                        promotionId = Constants.PROMOTION_ID,
+                        placement = "promotion"
                     )
                 )
             }
