@@ -111,11 +111,11 @@ object ApiRequests {
         val request = ViewProductItemRequest(
             sdkKey = sdkKey,
             userId = userId,
+            placement = params.placement,
             productId = params.productId,
             price = params.price,
             regularPrice = params.regularPrice,
             currencyCode = params.currencyCode,
-            placement = params.placement,
             month = params.month,
             createdAt = createdAt,
             platform = "android"

@@ -89,11 +89,11 @@ data class OfferProductResponse(
 data class ViewProductItemRequest(
     val sdkKey: String,
     val userId: String,
+    val placement: String,
     val productId: String,
     val price: Double,
     val regularPrice: Double,
     val currencyCode: String,
-    val placement: String,
     val month: Int?,
     val createdAt: String,
     val platform: String = "android"
