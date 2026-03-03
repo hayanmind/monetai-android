@@ -93,7 +93,8 @@ data class ViewProductItemRequest(
     val price: Double,
     val regularPrice: Double,
     val currencyCode: String,
-    val promotionId: Int,
+    val promotionId: Int?,
+    val source: String?,
     val month: Int?,
     val createdAt: String,
     val platform: String = "android"

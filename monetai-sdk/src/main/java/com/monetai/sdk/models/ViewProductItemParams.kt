@@ -5,6 +5,7 @@ data class ViewProductItemParams(
     val price: Double,
     val regularPrice: Double,
     val currencyCode: String,
-    val promotionId: Int,
+    val promotionId: Int? = null,
+    val source: String? = null,
     val month: Int? = null
 )
