@@ -151,21 +151,26 @@ class MonetaiSDK private constructor() {
      * @param options Event options to log
      */
     fun logEvent(options: LogEventOptions) {
+        // 호출 시점에 즉시 타임스탬프 캡처
+        val clientTimestampUs = currentTimestampUs()
+
         val sdkKey = sdkKey
         val userId = userId
 
         if (sdkKey == null || userId == null) {
-            pendingEvents.offer(PendingEvent.LogEvent(options, currentTimestampUs()))
+            pendingEvents.offer(PendingEvent.LogEvent(options, clientTimestampUs))
             return
         }
 
+        val timestamp = clientTimestampUs + serverTimeOffsetUs
         internalScope.launch {
             try {
                 ApiRequests.createEvent(
                     sdkKey = sdkKey,
                     userId = userId,
                     eventName = options.eventName,
-                    params = options.params
+                    params = options.params,
+                    timestamp = timestamp
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Event logging failed: ${options.eventName}", e)
@@ -213,20 +218,25 @@ class MonetaiSDK private constructor() {
      * @param params View product item parameters
      */
     fun logViewProductItem(params: ViewProductItemParams) {
+        // 호출 시점에 즉시 타임스탬프 캡처
+        val clientTimestampUs = currentTimestampUs()
+
         val sdkKey = sdkKey
         val userId = userId
 
         if (sdkKey == null || userId == null) {
-            pendingEvents.offer(PendingEvent.ViewProductItem(params, currentTimestampUs()))
+            pendingEvents.offer(PendingEvent.ViewProductItem(params, clientTimestampUs))
             return
         }
 
+        val timestamp = clientTimestampUs + serverTimeOffsetUs
         internalScope.launch {
             try {
                 ApiRequests.logViewProductItem(
                     sdkKey = sdkKey,
                     userId = userId,
-                    params = params
+                    params = params,
+                    timestamp = timestamp
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log view product item", e)
