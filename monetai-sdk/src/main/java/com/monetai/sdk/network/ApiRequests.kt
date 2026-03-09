@@ -52,7 +52,8 @@ object ApiRequests {
         userId: String,
         eventName: String,
         params: Map<String, Any>? = null,
-        createdAt: String
+        createdAt: String,
+        timestamp: Long? = null
     ) {
         val request = CreateEventRequest(
             sdkKey = sdkKey,
@@ -60,6 +61,7 @@ object ApiRequests {
             eventName = eventName,
             params = params,
             createdAt = createdAt,
+            timestamp = timestamp,
             platform = "android"
         )
 
@@ -106,7 +108,8 @@ object ApiRequests {
         sdkKey: String,
         userId: String,
         params: ViewProductItemParams,
-        createdAt: String
+        createdAt: String,
+        timestamp: Long? = null
     ) {
         val request = ViewProductItemRequest(
             sdkKey = sdkKey,
@@ -118,6 +121,7 @@ object ApiRequests {
             promotionId = params.promotionId,
             month = params.month,
             createdAt = createdAt,
+            timestamp = timestamp,
             platform = "android"
         )
 

@@ -42,6 +42,12 @@ class MonetaiSDK private constructor() {
     private var serverTimeOffset: Long = 0L
     private val pendingEvents = ConcurrentLinkedQueue<PendingEvent>()
 
+    // Microsecond timestamp anchoring
+    // Captured once at class init; used to derive μs-precision timestamps via monotonic clock
+    private val performanceOriginUs: Long = System.currentTimeMillis() * 1000L
+    private val nanoTimeOrigin: Long = System.nanoTime()
+    private var serverTimeOffsetUs: Long = 0L
+
     // Billing components
     private var billingManager: BillingManager? = null
     private var receiptValidator: ReceiptValidator? = null
@@ -115,9 +121,13 @@ class MonetaiSDK private constructor() {
                 // API initialization (IO)
                 val initResponse = ApiRequests.initialize(sdkKey = sdkKey, userId = userId)
 
-                // Calculate server time offset
+                // Calculate server time offset (milliseconds for createdAt)
                 val clientTimestamp = System.currentTimeMillis()
                 this@MonetaiSDK.serverTimeOffset = initResponse.server_timestamp - clientTimestamp
+
+                // Calculate server time offset in microseconds for timestamp field
+                val clientTimestampUs = currentTimestampUs()
+                this@MonetaiSDK.serverTimeOffsetUs = (initResponse.server_timestamp * 1000L) - clientTimestampUs
 
                 // Store initialization data (IO)
                 this@MonetaiSDK.organizationId = initResponse.organization_id
@@ -156,7 +166,7 @@ class MonetaiSDK private constructor() {
         val userId = userId
 
         if (sdkKey == null || userId == null) {
-            pendingEvents.offer(PendingEvent.LogEvent(options, System.currentTimeMillis()))
+            pendingEvents.offer(PendingEvent.LogEvent(options, currentTimestampUs()))
             return
         }
 
@@ -164,12 +174,14 @@ class MonetaiSDK private constructor() {
             try {
                 val adjustedTimestamp = Date(options.createdAt.time + serverTimeOffset)
                 val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
+                val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.createEvent(
                     sdkKey = sdkKey,
                     userId = userId,
                     eventName = options.eventName,
                     params = options.params,
-                    createdAt = createdAt
+                    createdAt = createdAt,
+                    timestamp = timestampUs
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Event logging failed: ${options.eventName}", e)
@@ -221,7 +233,7 @@ class MonetaiSDK private constructor() {
         val userId = userId
 
         if (sdkKey == null || userId == null) {
-            pendingEvents.offer(PendingEvent.ViewProductItem(params, System.currentTimeMillis()))
+            pendingEvents.offer(PendingEvent.ViewProductItem(params, currentTimestampUs()))
             return
         }
 
@@ -229,11 +241,13 @@ class MonetaiSDK private constructor() {
             try {
                 val adjustedTimestamp = Date(System.currentTimeMillis() + serverTimeOffset)
                 val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
+                val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.logViewProductItem(
                     sdkKey = sdkKey,
                     userId = userId,
                     params = params,
-                    createdAt = createdAt
+                    createdAt = createdAt,
+                    timestamp = timestampUs
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log view product item", e)
@@ -249,6 +263,7 @@ class MonetaiSDK private constructor() {
         userId = null
         organizationId = null
         serverTimeOffset = 0L
+        serverTimeOffsetUs = 0L
         isInitialized = false
         pendingEvents.clear()
 
@@ -278,6 +293,16 @@ class MonetaiSDK private constructor() {
 
     // MARK: - Private Methods
 
+    /**
+     * Generate a microsecond-precision Unix timestamp.
+     * Uses monotonic clock (System.nanoTime()) anchored to performanceOriginUs
+     * to avoid wall-clock jumps while maintaining μs precision.
+     */
+    private fun currentTimestampUs(): Long {
+        val elapsedUs = (System.nanoTime() - nanoTimeOrigin) / 1000L
+        return performanceOriginUs + elapsedUs
+    }
+
     private suspend fun processPendingEvents() {
         val sdkKey = sdkKey ?: return
         val userId = userId ?: return
@@ -295,24 +320,32 @@ class MonetaiSDK private constructor() {
             try {
                 when (event) {
                     is PendingEvent.LogEvent -> {
-                        val adjustedTimestamp = Date(event.clientTimestamp + serverTimeOffset)
+                        // clientTimestamp is in microseconds; convert to ms for createdAt
+                        val clientTimestampMs = event.clientTimestamp / 1000L
+                        val adjustedTimestamp = Date(clientTimestampMs + serverTimeOffset)
                         val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
+                        val timestampUs = event.clientTimestamp + serverTimeOffsetUs
                         ApiRequests.createEvent(
                             sdkKey = sdkKey,
                             userId = userId,
                             eventName = event.options.eventName,
                             params = event.options.params,
-                            createdAt = createdAt
+                            createdAt = createdAt,
+                            timestamp = timestampUs
                         )
                     }
                     is PendingEvent.ViewProductItem -> {
-                        val adjustedTimestamp = Date(event.clientTimestamp + serverTimeOffset)
+                        // clientTimestamp is in microseconds; convert to ms for createdAt
+                        val clientTimestampMs = event.clientTimestamp / 1000L
+                        val adjustedTimestamp = Date(clientTimestampMs + serverTimeOffset)
                         val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
+                        val timestampUs = event.clientTimestamp + serverTimeOffsetUs
                         ApiRequests.logViewProductItem(
                             sdkKey = sdkKey,
                             userId = userId,
                             params = event.params,
-                            createdAt = createdAt
+                            createdAt = createdAt,
+                            timestamp = timestampUs
                         )
                     }
                 }
