@@ -388,7 +388,7 @@ public class MainActivity extends AppCompatActivity {
             params.put("timestamp", System.currentTimeMillis() / 1000.0);
             params.put("user_level", 10);
 
-            LogEventOptions options = new LogEventOptions("custom_event", params, new Date());
+            LogEventOptions options = new LogEventOptions("custom_event", params);
             monetaiSDK.logEvent(options);
             Log.d(TAG, "[TEST] Event log request using LogEventOptions");
             Toast.makeText(this, "Event logged with options", Toast.LENGTH_SHORT).show();
