@@ -161,13 +161,11 @@ class MonetaiSDK private constructor() {
 
         internalScope.launch {
             try {
-                val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.createEvent(
                     sdkKey = sdkKey,
                     userId = userId,
                     eventName = options.eventName,
-                    params = options.params,
-                    timestamp = timestampUs
+                    params = options.params
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Event logging failed: ${options.eventName}", e)
@@ -225,12 +223,10 @@ class MonetaiSDK private constructor() {
 
         internalScope.launch {
             try {
-                val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.logViewProductItem(
                     sdkKey = sdkKey,
                     userId = userId,
-                    params = params,
-                    timestamp = timestampUs
+                    params = params
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log view product item", e)

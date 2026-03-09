@@ -50,7 +50,7 @@ object ApiRequests {
         userId: String,
         eventName: String,
         params: Map<String, Any>? = null,
-        timestamp: Long
+        timestamp: Long? = null
     ) {
         val request = CreateEventRequest(
             sdkKey = sdkKey,
@@ -104,7 +104,7 @@ object ApiRequests {
         sdkKey: String,
         userId: String,
         params: ViewProductItemParams,
-        timestamp: Long
+        timestamp: Long? = null
     ) {
         val request = ViewProductItemRequest(
             sdkKey = sdkKey,
