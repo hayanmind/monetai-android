@@ -2,8 +2,6 @@ package com.monetai.sdk.network
 
 import com.monetai.sdk.SDKVersion
 import com.monetai.sdk.models.*
-import com.monetai.sdk.utils.DateTimeHelper
-import java.util.*
 import android.util.Log
 
 /**
@@ -52,15 +50,13 @@ object ApiRequests {
         userId: String,
         eventName: String,
         params: Map<String, Any>? = null,
-        createdAt: String,
-        timestamp: Long? = null
+        timestamp: Long
     ) {
         val request = CreateEventRequest(
             sdkKey = sdkKey,
             userId = userId,
             eventName = eventName,
             params = params,
-            createdAt = createdAt,
             timestamp = timestamp,
             platform = "android"
         )
@@ -108,8 +104,7 @@ object ApiRequests {
         sdkKey: String,
         userId: String,
         params: ViewProductItemParams,
-        createdAt: String,
-        timestamp: Long? = null
+        timestamp: Long
     ) {
         val request = ViewProductItemRequest(
             sdkKey = sdkKey,
@@ -120,7 +115,6 @@ object ApiRequests {
             currencyCode = params.currencyCode,
             promotionId = params.promotionId,
             month = params.month,
-            createdAt = createdAt,
             timestamp = timestamp,
             platform = "android"
         )

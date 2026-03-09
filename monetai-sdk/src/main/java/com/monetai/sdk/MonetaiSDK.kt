@@ -7,11 +7,8 @@ import com.monetai.sdk.billing.ReceiptValidator
 import com.monetai.sdk.models.*
 import com.monetai.sdk.network.ApiClient
 import com.monetai.sdk.network.ApiRequests
-import com.monetai.sdk.utils.DateTimeHelper
 import kotlinx.coroutines.*
-import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
-import com.jakewharton.threetenabp.AndroidThreeTen
 
 /**
  * Main Monetai SDK class
@@ -39,7 +36,6 @@ class MonetaiSDK private constructor() {
     private var sdkKey: String? = null
     private var userId: String? = null
     private var organizationId: Int? = null
-    private var serverTimeOffset: Long = 0L
     private val pendingEvents = ConcurrentLinkedQueue<PendingEvent>()
 
     // Microsecond timestamp anchoring
@@ -85,11 +81,8 @@ class MonetaiSDK private constructor() {
                     reset()
                 }
 
-                // Minimal main-thread section: AndroidThreeTen init, Billing setup
+                // Minimal main-thread section: Billing setup
                 withContext(Dispatchers.Main) {
-                    // Initialize ThreeTenABP for timezone support
-                    AndroidThreeTen.init(context)
-
                     // Store SDK key and user ID in memory
                     this@MonetaiSDK.sdkKey = sdkKey
                     this@MonetaiSDK.userId = userId
@@ -120,10 +113,6 @@ class MonetaiSDK private constructor() {
 
                 // API initialization (IO)
                 val initResponse = ApiRequests.initialize(sdkKey = sdkKey, userId = userId)
-
-                // Calculate server time offset (milliseconds for createdAt)
-                val clientTimestamp = System.currentTimeMillis()
-                this@MonetaiSDK.serverTimeOffset = initResponse.server_timestamp - clientTimestamp
 
                 // Calculate server time offset in microseconds for timestamp field
                 val clientTimestampUs = currentTimestampUs()
@@ -172,15 +161,12 @@ class MonetaiSDK private constructor() {
 
         internalScope.launch {
             try {
-                val adjustedTimestamp = Date(options.createdAt.time + serverTimeOffset)
-                val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
                 val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.createEvent(
                     sdkKey = sdkKey,
                     userId = userId,
                     eventName = options.eventName,
                     params = options.params,
-                    createdAt = createdAt,
                     timestamp = timestampUs
                 )
             } catch (e: Exception) {
@@ -239,14 +225,11 @@ class MonetaiSDK private constructor() {
 
         internalScope.launch {
             try {
-                val adjustedTimestamp = Date(System.currentTimeMillis() + serverTimeOffset)
-                val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
                 val timestampUs = currentTimestampUs() + serverTimeOffsetUs
                 ApiRequests.logViewProductItem(
                     sdkKey = sdkKey,
                     userId = userId,
                     params = params,
-                    createdAt = createdAt,
                     timestamp = timestampUs
                 )
             } catch (e: Exception) {
@@ -262,7 +245,6 @@ class MonetaiSDK private constructor() {
         sdkKey = null
         userId = null
         organizationId = null
-        serverTimeOffset = 0L
         serverTimeOffsetUs = 0L
         isInitialized = false
         pendingEvents.clear()
@@ -320,31 +302,21 @@ class MonetaiSDK private constructor() {
             try {
                 when (event) {
                     is PendingEvent.LogEvent -> {
-                        // clientTimestamp is in microseconds; convert to ms for createdAt
-                        val clientTimestampMs = event.clientTimestamp / 1000L
-                        val adjustedTimestamp = Date(clientTimestampMs + serverTimeOffset)
-                        val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
                         val timestampUs = event.clientTimestamp + serverTimeOffsetUs
                         ApiRequests.createEvent(
                             sdkKey = sdkKey,
                             userId = userId,
                             eventName = event.options.eventName,
                             params = event.options.params,
-                            createdAt = createdAt,
                             timestamp = timestampUs
                         )
                     }
                     is PendingEvent.ViewProductItem -> {
-                        // clientTimestamp is in microseconds; convert to ms for createdAt
-                        val clientTimestampMs = event.clientTimestamp / 1000L
-                        val adjustedTimestamp = Date(clientTimestampMs + serverTimeOffset)
-                        val createdAt = DateTimeHelper.formatToISO8601(adjustedTimestamp)
                         val timestampUs = event.clientTimestamp + serverTimeOffsetUs
                         ApiRequests.logViewProductItem(
                             sdkKey = sdkKey,
                             userId = userId,
                             params = event.params,
-                            createdAt = createdAt,
                             timestamp = timestampUs
                         )
                     }
