@@ -162,7 +162,7 @@ class MonetaiSDK private constructor() {
             return
         }
 
-        val timestamp = clientTimestampUs + serverTimeOffsetUs
+        val timestamp = toServerTimestampUs(clientTimestampUs)
         internalScope.launch {
             try {
                 ApiRequests.createEvent(
@@ -229,7 +229,7 @@ class MonetaiSDK private constructor() {
             return
         }
 
-        val timestamp = clientTimestampUs + serverTimeOffsetUs
+        val timestamp = toServerTimestampUs(clientTimestampUs)
         internalScope.launch {
             try {
                 ApiRequests.logViewProductItem(
@@ -291,6 +291,13 @@ class MonetaiSDK private constructor() {
         return performanceOriginUs + elapsedUs
     }
 
+    /**
+     * Adjusts a client μs timestamp to server time using the calculated offset.
+     */
+    private fun toServerTimestampUs(clientTimestampUs: Long): Long {
+        return clientTimestampUs + serverTimeOffsetUs
+    }
+
     private suspend fun processPendingEvents() {
         val sdkKey = sdkKey ?: return
         val userId = userId ?: return
@@ -308,7 +315,7 @@ class MonetaiSDK private constructor() {
             try {
                 when (event) {
                     is PendingEvent.LogEvent -> {
-                        val timestampUs = event.clientTimestamp + serverTimeOffsetUs
+                        val timestampUs = toServerTimestampUs(event.clientTimestamp)
                         ApiRequests.createEvent(
                             sdkKey = sdkKey,
                             userId = userId,
@@ -318,7 +325,7 @@ class MonetaiSDK private constructor() {
                         )
                     }
                     is PendingEvent.ViewProductItem -> {
-                        val timestampUs = event.clientTimestamp + serverTimeOffsetUs
+                        val timestampUs = toServerTimestampUs(event.clientTimestamp)
                         ApiRequests.logViewProductItem(
                             sdkKey = sdkKey,
                             userId = userId,
