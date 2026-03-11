@@ -276,7 +276,7 @@ public class MainActivity extends AppCompatActivity {
         isLoading = true;
         updatePredictButtonState();
 
-        monetaiSDK.getOffer(Constants.PROMOTION_ID, (offer, error) -> {
+        monetaiSDK.getOffer(Constants.PLACEMENT, (offer, error) -> {
             runOnUiThread(() -> {
                 if (error != null) {
                     offerResult = "Error: " + error.getMessage();
@@ -355,11 +355,11 @@ public class MainActivity extends AppCompatActivity {
             if (matchedPkg != null) {
                 monetaiSDK.logViewProductItem(
                         new ViewProductItemParams(
+                                Constants.PLACEMENT,
                                 matchedPkg.getProduct().getId(),
                                 matchedPkg.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 basePackage.getProduct().getPrice().getAmountMicros() / 1_000_000.0,
                                 matchedPkg.getProduct().getPrice().getCurrencyCode(),
-                                Constants.PROMOTION_ID,
                                 null
                         )
                 );
