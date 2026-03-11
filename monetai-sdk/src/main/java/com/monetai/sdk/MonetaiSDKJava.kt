@@ -73,11 +73,11 @@ class MonetaiSDKJava {
 
     /**
      * Get dynamic pricing offer (Java compatible)
-     * @param promotionId Promotion ID
+     * @param placement Placement identifier for the promotion
      * @param completion Callback with offer or error
      */
-    fun getOffer(promotionId: Int, completion: OfferCallback? = null) {
-        MonetaiSDK.shared.getOffer(promotionId) { offer, error ->
+    fun getOffer(placement: String, completion: OfferCallback? = null) {
+        MonetaiSDK.shared.getOffer(placement) { offer, error ->
             completion?.onResult(offer, error)
         }
     }

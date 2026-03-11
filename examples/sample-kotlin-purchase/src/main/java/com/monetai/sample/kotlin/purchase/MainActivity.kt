@@ -270,7 +270,7 @@ class MainActivity : AppCompatActivity() {
         isLoading = true
         updatePredictButtonState()
 
-        monetaiSDK.getOffer(Constants.PROMOTION_ID) { offer, error ->
+        monetaiSDK.getOffer(Constants.PLACEMENT) { offer, error ->
             runOnUiThread {
                 if (error != null) {
                     offerResult = "Error: ${error.message}"
@@ -332,7 +332,7 @@ class MainActivity : AppCompatActivity() {
                         price = pkg.product.price.amountMicros / 1_000_000.0,
                         regularPrice = basePackage.product.price.amountMicros / 1_000_000.0,
                         currencyCode = pkg.product.price.currencyCode,
-                        promotionId = Constants.PROMOTION_ID
+                        placement = Constants.PLACEMENT
                     )
                 )
             }

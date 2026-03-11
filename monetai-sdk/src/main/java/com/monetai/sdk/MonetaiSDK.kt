@@ -190,16 +190,16 @@ class MonetaiSDK private constructor() {
 
     /**
      * Get dynamic pricing offer for a promotion
-     * @param promotionId Promotion ID
+     * @param placement Placement identifier for the promotion
      * @param completion Completion callback with offer or error
      */
-    fun getOffer(promotionId: Int, completion: ((Offer?, Exception?) -> Unit)? = null) {
+    fun getOffer(placement: String, completion: ((Offer?, Exception?) -> Unit)? = null) {
         internalScope.launch {
             try {
                 val sdkKey = sdkKey ?: throw MonetaiError.NotInitialized
                 val userId = userId ?: throw MonetaiError.NotInitialized
 
-                val offer = ApiRequests.getOffer(sdkKey = sdkKey, userId = userId, promotionId = promotionId)
+                val offer = ApiRequests.getOffer(sdkKey = sdkKey, userId = userId, placement = placement)
 
                 withContext(Dispatchers.Main) {
                     completion?.invoke(offer, null)

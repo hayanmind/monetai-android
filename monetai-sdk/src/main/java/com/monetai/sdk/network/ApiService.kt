@@ -68,7 +68,7 @@ data class CreateEventRequest(
 data class GetOfferRequest(
     val sdkKey: String,
     val userId: String,
-    val promotionId: Int,
+    val placement: String,
     val platform: String = "android"
 )
 
@@ -89,11 +89,11 @@ data class OfferProductResponse(
 data class ViewProductItemRequest(
     val sdkKey: String,
     val userId: String,
+    val placement: String,
     val productId: String,
     val price: Double,
     val regularPrice: Double,
     val currencyCode: String,
-    val promotionId: Int,
     val month: Int?,
     val timestamp: Long? = null,
     val platform: String = "android"
