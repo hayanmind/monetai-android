@@ -1,14 +1,11 @@
 package com.monetai.sdk.models
 
-import java.util.*
-
 /**
  * Event logging options
  */
 data class LogEventOptions(
     val eventName: String,
-    val params: Map<String, Any>? = null,
-    val createdAt: Date = Date()
+    val params: Map<String, Any>? = null
 ) {
     companion object {
         /**

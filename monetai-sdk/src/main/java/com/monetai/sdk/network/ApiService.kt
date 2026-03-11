@@ -60,7 +60,7 @@ data class CreateEventRequest(
     val userId: String,
     val eventName: String,
     val params: Map<String, Any>?,
-    val createdAt: String,
+    val timestamp: Long? = null,
     val platform: String = "android"
 )
 
@@ -95,7 +95,7 @@ data class ViewProductItemRequest(
     val regularPrice: Double,
     val currencyCode: String,
     val month: Int?,
-    val createdAt: String,
+    val timestamp: Long? = null,
     val platform: String = "android"
 )
 
